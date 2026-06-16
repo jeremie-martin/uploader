@@ -60,22 +60,29 @@ class ObjectStoreQueue(Queue):
         return f"{self.prefix}/{bundle_id}/{name}"
 
     def _list_objects(self) -> dict[str, dict[str, Any]]:
-        """Group objects under the prefix by bundle_id -> {name: {size, mtime}}."""
-        bundles: dict[str, dict[str, Any]] = {}
-        paginator = self._client.get_paginator("list_objects_v2")
+        """Group objects into bundles -> {name: {size, mtime}}, scanned recursively.
+
+        A bundle is any "directory" (key prefix) holding an ``upload.json`` object,
+        at any depth under the prefix, mirroring the recursive local backend. A bundle's
+        files are the objects sitting directly in that same prefix. bundle_id is the
+        bundle's path relative to ``self.prefix`` (may contain slashes)."""
         base = f"{self.prefix}/"
+        objs: dict[str, dict[str, Any]] = {}
+        paginator = self._client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket, Prefix=base):
             for obj in page.get("Contents", []):
-                rel = obj["Key"][len(base) :]
-                if "/" not in rel:
-                    continue
-                bundle_id, _, name = rel.partition("/")
-                if not name:
-                    continue
-                bundles.setdefault(bundle_id, {})[name] = {
-                    "size": obj["Size"],
-                    "mtime": obj["LastModified"].timestamp(),
-                }
+                objs[obj["Key"]] = {"size": obj["Size"], "mtime": obj["LastModified"].timestamp()}
+
+        bundles: dict[str, dict[str, Any]] = {}
+        for key in objs:
+            if key.rsplit("/", 1)[-1] != SIDECAR_NAME:
+                continue
+            bundle_dir = key[: -len(SIDECAR_NAME)].rstrip("/")  # full key prefix of the bundle
+            bundle_id = bundle_dir[len(base) :]
+            if not bundle_id:
+                continue  # stray sidecar at the root prefix; ignore
+            files = {k.rpartition("/")[2]: meta for k, meta in objs.items() if k.rpartition("/")[0] == bundle_dir}
+            bundles[bundle_id] = files
         return bundles
 
     def _get_json(self, bundle_id: str, name: str) -> dict[str, Any] | None:

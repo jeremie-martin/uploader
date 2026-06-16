@@ -64,6 +64,43 @@ def test_local_queue_listing(tf, tmp_path):
     tf.expect(ids == {"ready-001"}, f"only the valid ready bundle is listed (got {sorted(ids)})")
 
 
+@recorded_test("local_queue_recursive")
+def test_local_queue_recursive(tf, tmp_path):
+    inbox = tmp_path / "inbox"
+    q = LocalQueue(inbox, settle_seconds=0)
+    # A bundle nested several levels deep must be found.
+    _write_bundle(inbox, "by-project/tiki/2026/run-001")
+    # A non-bundle organizational dir (no sidecar) in between is fine.
+    (inbox / "by-project" / "empty-so-far").mkdir(parents=True, exist_ok=True)
+
+    refs = q.list_ready()
+    ids = {r.bundle_id for r in refs}
+    tf.log(f"listed ids: {ids}")
+    tf.expect(ids == {"by-project/tiki/2026/run-001"}, f"nested bundle found with relative id (got {ids})")
+
+    ref = refs[0]
+    local = q.fetch(ref, tmp_path / "scratch")
+    tf.expect(local.video_path.exists(), "fetch resolves the nested video")
+
+    q.remove(ref)
+    tf.expect(not (inbox / "by-project" / "tiki").exists(), "remove prunes now-empty parent dirs")
+    tf.expect(inbox.exists(), "but never removes the inbox itself")
+    tf.expect((inbox / "by-project" / "empty-so-far").exists(), "unrelated empty dir left untouched")
+
+
+@recorded_test("local_queue_no_descend_into_bundle")
+def test_no_nested_bundle_inside_bundle(tf, tmp_path):
+    inbox = tmp_path / "inbox"
+    q = LocalQueue(inbox, settle_seconds=0)
+    outer = _write_bundle(inbox, "outer")
+    # A stray subdir with its own sidecar inside a bundle must NOT become a second bundle.
+    _write_bundle(inbox / "outer", "extras")  # creates inbox/outer/extras/upload.json
+    refs = q.list_ready()
+    ids = {r.bundle_id for r in refs}
+    tf.expect(ids == {"outer"}, f"scan does not descend into a bundle (got {ids})")
+    _ = outer
+
+
 @recorded_test("local_queue_settle")
 def test_local_queue_settle_time(tf, tmp_path):
     inbox = tmp_path / "inbox"
@@ -125,10 +162,15 @@ def test_objectstore_roundtrip(tf, tmp_path, monkeypatch):
         s3.put_object(Bucket="vids", Key="inbox/run-1/video.mp4", Body=b"the-video")
         s3.put_object(Bucket="vids", Key="inbox/run-1/upload.json", Body=json.dumps({"project": "demo"}).encode())
 
+        # A nested bundle (deeper key prefix) must also be discovered.
+        s3.put_object(Bucket="vids", Key="inbox/by-day/2026/run-2/video.mp4", Body=b"vid2")
+        s3.put_object(Bucket="vids", Key="inbox/by-day/2026/run-2/upload.json", Body=json.dumps({"project": "demo"}).encode())
+
         q = ObjectStoreQueue(bucket="vids", prefix="inbox", settle_seconds=0)
         refs = q.list_ready()
-        tf.expect(len(refs) == 1, f"one ready bundle in the bucket (got {len(refs)})")
-        ref = refs[0]
+        ids = {r.bundle_id for r in refs}
+        tf.expect(ids == {"run-1", "by-day/2026/run-2"}, f"flat + nested bundles found (got {ids})")
+        ref = next(r for r in refs if r.bundle_id == "run-1")
         tf.expect(ref.project == "demo", "project read from sidecar object")
 
         local = q.fetch(ref, tmp_path / "dl")
@@ -137,7 +179,8 @@ def test_objectstore_roundtrip(tf, tmp_path, monkeypatch):
         q.mark_uploaded(ref, {"youtube_id": "VIDOBJ"})
         marker = json.loads(s3.get_object(Bucket="vids", Key="inbox/run-1/uploaded")["Body"].read())
         tf.expect(marker["youtube_id"] == "VIDOBJ", "marker object written")
-        tf.expect(q.list_ready()[0].is_resumed, "marker -> resumed on next list")
+        run1 = next(r for r in q.list_ready() if r.bundle_id == "run-1")
+        tf.expect(run1.is_resumed, "marker -> resumed on next list")
 
         q.remove(ref)
         remaining = s3.list_objects_v2(Bucket="vids", Prefix="inbox/run-1/").get("Contents", [])

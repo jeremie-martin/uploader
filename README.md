@@ -26,7 +26,14 @@ backend) or under an object-store prefix (cloud backend). Write/upload the sidec
 ```
 
 Only `project` is required. `values` feed the templates; `overrides` (any subset) bypass
-the engine for one-offs. If `video` is omitted, the lone video file in the bundle is used.
+the engine for one-offs. `meta` is recorded in the ledger but never uploaded. If `video`
+is omitted, the lone video file in the bundle is used.
+
+The inbox is scanned **recursively**: a bundle is any directory holding an `upload.json`,
+at any depth, so you can organize the inbox into whatever sub-folders you like
+(`inbox/tiki/2026/run-001/...`). It stays strictly one video + one sidecar per bundle; the
+scan never descends into a bundle, skips dot-prefixed staging dirs, and prunes empty
+parent folders after a bundle is removed.
 
 ## Per-project pool config (`projects/<name>.toml`)
 

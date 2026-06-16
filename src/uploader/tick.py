@@ -1,4 +1,4 @@
-"""The scheduler tick — the oneshot unit a cron/systemd-timer fires.
+"""The scheduler tick - the oneshot unit a cron/systemd-timer fires.
 
 Modeled on ``motiontwin``'s ``publish-once.mjs`` skeleton, but with all project-specific
 work (video composition, highscore logic) removed: this only resolves text and uploads.
@@ -16,8 +16,8 @@ One tick:
 
 Exit codes (so the timer/operator can tell apart states):
     0  uploaded one, or nothing to do
-    2  rate-limited — bundle kept for retry
-    3  auth broken — needs ``uploader auth``; bundle kept
+    2  rate-limited - bundle kept for retry
+    3  auth broken - needs ``uploader auth``; bundle kept
     1  a bundle failed terminally (recorded to failed.jsonl, removed)
 """
 

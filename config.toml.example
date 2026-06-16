@@ -18,7 +18,7 @@ projects_dir = "~/prog/uploader/projects"
 settle_seconds = 5
 
 # ---------------------------------------------------------------------------
-# Queue backends — drained together. List as many as you like.
+# Queue backends - drained together. List as many as you like.
 # ---------------------------------------------------------------------------
 
 # Phase 1: a local inbox on the Pi (on-network generators rsync bundles here).

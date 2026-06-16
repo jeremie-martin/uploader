@@ -2,7 +2,7 @@
 
 Captured at upload time and stored in the ledger so uploads can later be correlated with
 YouTube analytics (resolution, duration, fps, codecs, size). Entirely optional: if
-ffprobe is absent or the probe fails, this returns ``{}`` and never raises — probing
+ffprobe is absent or the probe fails, this returns ``{}`` and never raises - probing
 must never block an upload.
 """
 

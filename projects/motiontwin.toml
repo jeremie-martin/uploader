@@ -1,4 +1,4 @@
-# motiontwin — a bot playing a 2000s KadoKado/Motion Twin Flash game (Interwheel).
+# motiontwin - a bot playing a 2000s KadoKado/Motion Twin Flash game (Interwheel).
 # Seeded from motiontwin/scripts/motiontwin/data/titles.json. Per-video `values`:
 # { "score": <int> }. Note titles intentionally avoid revealing a new best (spoiler).
 

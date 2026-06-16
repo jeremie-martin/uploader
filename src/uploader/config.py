@@ -5,7 +5,7 @@ Two layers:
 * **Global** (``config.toml`` on the uploader host): where credentials live, which
   queue backends to drain, the shared default privacy/category, and where to find the
   per-project configs. Resolved with env-var overrides so a systemd unit can tweak it.
-* **Per-project** (``projects/<name>.toml``): the redesigned "pool" — title/description
+* **Per-project** (``projects/<name>.toml``): the redesigned "pool" - title/description
   templates, hashtags, tags, value-conditioned ``tags_when`` rules, plus routing
   (playlist) and cadence for that project. This is the *content* each project owns; the
   *mechanism* lives in :mod:`uploader.engine`.
@@ -94,7 +94,7 @@ def _reject_unknown(found: object, allowed: set[str], where: str, path: Path) ->
     misplaced = unknown & _TOP_LEVEL_KEYS
     if where != "top level" and misplaced:
         hint = (
-            f" — {sorted(misplaced)} look like top-level keys written after the [{where}] header "
+            f" - {sorted(misplaced)} look like top-level keys written after the [{where}] header "
             f"(TOML absorbs trailing top-level keys into the preceding table); move them above the "
             f"first [table]"
         )
@@ -198,7 +198,7 @@ def _default_projects_dir() -> Path:
 def load_global_config(path: Path | None = None) -> GlobalConfig:
     """Load the global config from ``path`` (or ``$UPLOADER_HOME/config.toml``).
 
-    Missing file is fine — sensible defaults (a single local inbox under HOME) apply,
+    Missing file is fine - sensible defaults (a single local inbox under HOME) apply,
     overridable by env vars (``UPLOADER_HOME``, ``UPLOADER_PROJECTS_DIR``,
     ``UPLOADER_CREDENTIALS_DIR``).
     """

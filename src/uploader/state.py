@@ -2,13 +2,13 @@
 
 Kept deliberately separate from the queue backends. Because the uploader process stays
 put (e.g. on the Pi) even when the video buffer moves to object storage, this state just
-lives locally under ``$UPLOADER_HOME`` throughout — only the videos relocate.
+lives locally under ``$UPLOADER_HOME`` throughout - only the videos relocate.
 
 Files (all under ``home``):
 
-* ``state.json``    — ``{"projects": {"<name>": "<last_upload_iso>"}}`` (cadence clock)
-* ``uploads.jsonl`` — append-only ledger; source of truth, used for dedup by youtube id
-* ``failed.jsonl``  — append-only terminal failures, for post-mortem
+* ``state.json``    - ``{"projects": {"<name>": "<last_upload_iso>"}}`` (cadence clock)
+* ``uploads.jsonl`` - append-only ledger; source of truth, used for dedup by youtube id
+* ``failed.jsonl``  - append-only terminal failures, for post-mortem
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from uploader.atomic import (
 
 def _parse_iso(s: str | None) -> float | None:
     """Parse an ISO-8601 timestamp to an epoch (seconds). 'Z' is treated as UTC, and a
-    timezone-naive string is assumed UTC — never local — so the cadence clock is correct
+    timezone-naive string is assumed UTC - never local - so the cadence clock is correct
     regardless of the host's timezone."""
     if not s:
         return None

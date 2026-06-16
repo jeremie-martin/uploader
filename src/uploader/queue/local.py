@@ -1,4 +1,4 @@
-"""Local-filesystem queue backend — a directory inbox (the Pi; an rsync target).
+"""Local-filesystem queue backend - a directory inbox (the Pi; an rsync target).
 
 Layout::
 

@@ -3,7 +3,7 @@ Description=Fire an uploader tick every 15 minutes
 
 [Timer]
 # Poll granularity only. The actual per-project upload rate is the `cadence` in each
-# projects/<name>.toml, enforced inside the tick — so a 15-min tick with a project
+# projects/<name>.toml, enforced inside the tick - so a 15-min tick with a project
 # cadence of "2h" still uploads that project at most once every 2 hours.
 OnActiveSec=2min
 OnUnitInactiveSec=15min

@@ -5,7 +5,7 @@ produces a **finished video + a small `upload.json` sidecar**; the uploader reso
 title/description/tags from a central per-project pool config + per-video values, and
 publishes one video at a time on a per-project cadence to a single shared channel.
 
-It **never touches video frames** — all rendering/composition stays on the generation
+It **never touches video frames** - all rendering/composition stays on the generation
 side. This is the deliberate line that the older per-project uploaders
 (`double-pendulum`, `lpt2d`, `motiontwin`) blurred.
 
@@ -13,7 +13,7 @@ side. This is the deliberate line that the older per-project uploaders
 
 A **bundle** = a finished video + an `upload.json` sidecar, in a directory (local
 backend) or under an object-store prefix (cloud backend). Write/upload the sidecar
-**last** — it's the "ready" sentinel.
+**last** - it's the "ready" sentinel.
 
 ```json
 {
@@ -79,16 +79,16 @@ handling is a side-effect of the oneshot design and needs almost no babysitting:
   and refreshes the 1-hour access token in place when expired. No daemon holds stale
   creds in memory.
 - **Rotate with no restart.** Drop a new `token.pickle` into `credentials_dir` and the
-  next tick uses it — nothing to reload or restart. `uploader status` shows current
+  next tick uses it - nothing to reload or restart. `uploader status` shows current
   health.
 - **If the refresh token dies** (revoked, or the weekly Testing-mode expiry below), a
   tick logs the problem, returns a non-zero "needs auth" code, and *keeps* the bundle.
-  Uploads pause safely and resume automatically once you re-auth — no crash, no loss.
+  Uploads pause safely and resume automatically once you re-auth - no crash, no loss.
 
 **Stop the weekly re-auth (do this once):** Google expires refresh tokens after 7 days
 for OAuth apps in **"Testing"** publishing status (`youtube.upload` is a sensitive
 scope). In Google Cloud Console → *OAuth consent screen* → **Publish app** ("In
-production"). Refresh tokens then no longer expire weekly — you auth once.
+production"). Refresh tokens then no longer expire weekly - you auth once.
 
 **Headless Pi:** the browser OAuth flow is awkward on a headless host, so run
 `uploader auth` on a desktop and `scp credentials/token.pickle` to the Pi's
@@ -101,12 +101,12 @@ token directly in place) and is the leanest setup to start with.
 The scheduler and the buffer are decoupled (backends are config, not code), so you can
 start simple and grow:
 
-- **Phase 1 — Pi as uploader + datastore.** Run the uploader on the always-on Pi with a
+- **Phase 1 - Pi as uploader + datastore.** Run the uploader on the always-on Pi with a
   `local` backend; on-network generators rsync bundles into the inbox. Free, no cloud.
-- **Phase 2 — videos in the cloud.** Add an `objectstore` backend (Backblaze B2 / Cloudflare
+- **Phase 2 - videos in the cloud.** Add an `objectstore` backend (Backblaze B2 / Cloudflare
   R2) for off-network machines or buffers larger than the Pi's disk. Off-network generators
   push to the bucket; the uploader downloads one video at a time. Both backends can run at
-  once during the transition. **No code change** — just config. Durable state (ledger,
+  once during the transition. **No code change** - just config. Durable state (ledger,
   cadence clock) stays on the Pi throughout; only the video buffer relocates.
 
 Install the timer (model: `systemd/user/uploader.{timer,service}`):
@@ -122,7 +122,7 @@ loginctl enable-linger "$USER"        # so the timer runs at boot without an act
 
 The timer fires every ~15 min (poll granularity); the real per-project rate is each
 project's `cadence`, enforced inside the tick. `enable-linger` is the one piece that
-makes it survive reboots / logouts — without it, user timers only run while you're
+makes it survive reboots / logouts - without it, user timers only run while you're
 logged in. Check it's alive with `systemctl --user list-timers uploader.timer` and
 `uploader status`.
 

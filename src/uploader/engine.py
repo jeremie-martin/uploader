@@ -1,4 +1,4 @@
-"""The metadata engine — the one universal mechanism the uploader owns.
+"""The metadata engine - the one universal mechanism the uploader owns.
 
 This is the clean replacement for the title/description/tag "pools" that were
 re-implemented (messily) in every project: ``double-pendulum``'s
@@ -8,9 +8,9 @@ re-implemented (messily) in every project: ``double-pendulum``'s
 The split is: the *content* is project-specific (lives in ``projects/<name>.toml``)
 but the *mechanism* is universal and lives here:
 
-* ``render_template`` — ``{key}``/``{key|filter}``/``{key|f1|f2}`` substitution with an
+* ``render_template`` - ``{key}``/``{key|filter}``/``{key|f1|f2}`` substitution with an
   extensible filter registry (``human`` turns ``1000000`` -> ``"1 Million"``).
-* ``pick`` — choose a title/description template, render with per-video values, append
+* ``pick`` - choose a title/description template, render with per-video values, append
   a random sample of hashtags, assemble tags (base + value-conditioned ``tags_when``),
   apply sidecar overrides last, then validate/clamp to YouTube's limits.
 
@@ -46,7 +46,7 @@ class TemplateError(ValueError):
 
 
 # --------------------------------------------------------------------------- #
-# Filter registry — extend by registering more callables.
+# Filter registry - extend by registering more callables.
 # --------------------------------------------------------------------------- #
 
 Filter = Callable[[Any], str]
@@ -119,7 +119,7 @@ _TOKEN = re.compile(r"\{([a-zA-Z0-9_]+)((?:\|[a-zA-Z0-9_]+)*)\}")
 def render_template(text: str, values: dict[str, Any]) -> str:
     """Render ``{key}`` / ``{key|filter}`` / ``{key|f1|f2}`` tokens against ``values``.
 
-    Raises :class:`TemplateError` if a referenced key is missing — a malformed
+    Raises :class:`TemplateError` if a referenced key is missing - a malformed
     bundle/config should fail loudly rather than publish a literal ``{count}``.
     """
 
@@ -257,7 +257,7 @@ def pick(
     rng
         Source of randomness; pass a seeded ``random.Random`` for reproducibility.
     overrides
-        Sidecar ``overrides`` block — any of ``title``/``description``/``tags``/
+        Sidecar ``overrides`` block - any of ``title``/``description``/``tags``/
         ``playlist``/``privacy`` here fully replaces the engine's choice.
     """
     rng = rng or random.Random()

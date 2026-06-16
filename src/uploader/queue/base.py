@@ -2,7 +2,7 @@
 
 A **bundle** is the contract a project produces: a finished video file + an
 ``upload.json`` sidecar. ``upload.json`` is written/uploaded **last** so it doubles as
-the "ready" sentinel — a half-transferred bundle is never picked up.
+the "ready" sentinel - a half-transferred bundle is never picked up.
 
 ``upload.json`` schema (only ``project`` is required)::
 
@@ -54,7 +54,7 @@ class BundleRef:
 
     @property
     def meta(self) -> dict[str, Any]:
-        """Free-form reference data — recorded in the ledger, never uploaded or templated."""
+        """Free-form reference data - recorded in the ledger, never uploaded or templated."""
         return dict(self.sidecar.get("meta") or {})
 
     def __repr__(self) -> str:  # avoid recursing into self.backend

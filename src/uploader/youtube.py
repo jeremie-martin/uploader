@@ -1,4 +1,4 @@
-"""YouTube upload core — OAuth + resumable upload + playlist insert + rate-limit.
+"""YouTube upload core - OAuth + resumable upload + playlist insert + rate-limit.
 
 Ported (≈ verbatim) from ``motiontwin/scripts/motiontwin/youtube_upload.py``, which is
 itself a near-copy of ``lpt2d``'s. Lifted once so no future project re-implements it.
@@ -44,11 +44,11 @@ CHUNKSIZE = 10 * 1024 * 1024  # 10 MiB resumable chunks
 
 
 class UploadError(RuntimeError):
-    """A terminal upload failure — the bundle should be marked failed."""
+    """A terminal upload failure - the bundle should be marked failed."""
 
 
 class RateLimitError(UploadError):
-    """YouTube quota/rate-limit hit — retry later; do NOT mark the bundle failed."""
+    """YouTube quota/rate-limit hit - retry later; do NOT mark the bundle failed."""
 
     def __init__(self, message: str, retry_after: int | None = None) -> None:
         super().__init__(message)
@@ -56,7 +56,7 @@ class RateLimitError(UploadError):
 
 
 class AuthError(UploadError):
-    """Token missing/invalid/not refreshable — needs ``uploader auth``; keep the bundle."""
+    """Token missing/invalid/not refreshable - needs ``uploader auth``; keep the bundle."""
 
 
 def token_path(credentials_dir: Path) -> Path:
@@ -85,7 +85,7 @@ def load_or_refresh(credentials_dir: Path) -> Credentials:
     """Load the cached token, refreshing in place if expired. Raises :class:`AuthError`."""
     tp = token_path(credentials_dir)
     if not tp.exists():
-        raise AuthError(f"no token at {tp} — run `uploader auth` first")
+        raise AuthError(f"no token at {tp} - run `uploader auth` first")
     creds: Credentials = pickle.loads(tp.read_bytes())
     if creds.valid:
         return creds
@@ -94,7 +94,7 @@ def load_or_refresh(credentials_dir: Path) -> Credentials:
         atomic_write_bytes(tp, pickle.dumps(creds))
         logger.info("refreshed access token; pickle updated")
         return creds
-    raise AuthError("cached token is invalid and not refreshable — re-run `uploader auth`")
+    raise AuthError("cached token is invalid and not refreshable - re-run `uploader auth`")
 
 
 def inspect_token(credentials_dir: Path) -> dict:
@@ -194,7 +194,7 @@ def upload(
                 },
             ).execute()
             logger.info("added to playlist {}", playlist_id)
-        except HttpError as e:  # playlist failure is non-fatal — the video is up.
+        except HttpError as e:  # playlist failure is non-fatal - the video is up.
             logger.warning("playlist insert failed for {}: {}", video_id, e)
 
     return video_id

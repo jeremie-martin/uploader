@@ -166,7 +166,7 @@ def preview(ctx: click.Context, bundle: Path, samples: int) -> None:
     values = sidecar.get("values") or {}
     overrides = sidecar.get("overrides") or {}
 
-    # Seed from the bundle directory name — the same bundle_id the tick seeds with — so a
+    # Seed from the bundle directory name - the same bundle_id the tick seeds with - so a
     # single-sample preview reproduces exactly what the tick would pick.
     bundle_id = bundle.name if bundle.is_dir() else bundle.parent.name
 
@@ -212,15 +212,15 @@ def status(ctx: click.Context) -> None:
     cfg = load_global_config(ctx.obj["config_path"])
     t = youtube.inspect_token(cfg.credentials_dir)
     if not t["present"]:
-        click.echo(f"token:    MISSING ({cfg.credentials_dir}/token.pickle) — run `uploader auth`")
+        click.echo(f"token:    MISSING ({cfg.credentials_dir}/token.pickle) - run `uploader auth`")
     elif "error" in t:
-        click.echo(f"token:    UNREADABLE — {t['error']}")
+        click.echo(f"token:    UNREADABLE - {t['error']}")
     elif t["valid"]:
         click.echo(f"token:    OK (valid, expires {t['expiry']})")
     elif t["refreshable"]:
-        click.echo(f"token:    stale but auto-refreshable (expired {t['expiry']}) — next tick refreshes it")
+        click.echo(f"token:    stale but auto-refreshable (expired {t['expiry']}) - next tick refreshes it")
     else:
-        click.echo("token:    EXPIRED and NOT refreshable — run `uploader auth` (publish the OAuth app to avoid this)")
+        click.echo("token:    EXPIRED and NOT refreshable - run `uploader auth` (publish the OAuth app to avoid this)")
 
     click.echo(f"projects: {len(cfg.known_projects())} ({', '.join(cfg.known_projects()) or '-'})")
     try:
@@ -230,9 +230,9 @@ def status(ctx: click.Context) -> None:
             refs = b.list_ready()
             ready = sum(1 for r in refs if not r.is_resumed)
             resumed = sum(1 for r in refs if r.is_resumed)
-            click.echo(f"backend:  {b.name} — {ready} ready, {resumed} awaiting cleanup")
+            click.echo(f"backend:  {b.name} - {ready} ready, {resumed} awaiting cleanup")
     except Exception as e:  # noqa: BLE001 - status must never crash
-        click.echo(f"backend:  ERROR listing — {e}")
+        click.echo(f"backend:  ERROR listing - {e}")
 
 
 @cli.command()

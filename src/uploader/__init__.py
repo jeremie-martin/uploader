@@ -1,4 +1,4 @@
-"""uploader — a generic, multi-project YouTube upload service.
+"""uploader - a generic, multi-project YouTube upload service.
 
 A video project hands the uploader a *finished* video plus a small ``upload.json``
 sidecar (the contract). The uploader resolves title/description/tags from a central

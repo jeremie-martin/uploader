@@ -1,4 +1,4 @@
-# double-pendulum — chaos physics simulations.
+# double-pendulum - chaos physics simulations.
 # Seeded from double-pendulum/src/pendulum_tools/templates.py. Per-video `values`
 # expected in the sidecar: { "count": <int pendulums>, "boom_time": "<e.g. 12s>" }.
 

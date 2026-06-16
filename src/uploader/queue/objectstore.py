@@ -1,4 +1,4 @@
-"""Object-storage queue backend — S3-compatible (Backblaze B2 / Cloudflare R2 / S3).
+"""Object-storage queue backend - S3-compatible (Backblaze B2 / Cloudflare R2 / S3).
 
 For off-network generators and deep buffers beyond the Pi's disk. The bucket is the
 queue + the durable buffer; the uploader downloads exactly one video at a time, so the

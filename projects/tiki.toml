@@ -1,7 +1,8 @@
-# tiki — procedurally generated Line Rider tracks synced to music.
+# tiki - procedurally generated Line Rider tracks synced to music.
 # Each video is one seed of a shared musical spec (speed / airtime / beat-landings).
-# Per-video `values`: { "seed": <int>, "rep": <int> }. Starter pool — edit freely.
+# Per-video `values`: { "seed": <int>, "rep": <int> }. Starter pool - edit freely.
 
+playlist = "PLJiY6b-MSe_8"
 privacy = "public"
 category_id = "20"      # Gaming (Line Rider). Use "1" for Film & Animation.
 cadence = "2h"          # at most one tiki upload every 2 hours
@@ -14,19 +15,20 @@ tags = [
 
 [title]
 templates = [
-    "this Line Rider track writes itself to the music",
-    "procedurally generated Line Rider, synced to the beat",
-    "a Line Rider track that lands on every beat",
-    "auto-generated Line Rider track, synced to the song",
-    "Line Rider, but the track is generated from the music",
-    "every jump lands on the beat",
+    "Line Rider synced to music",
+    "Line Rider synced to the beat",
+    "Line Rider music",
+    "cool Line Rider track",
+    "satisfying Line Rider",
+    "procedural Line Rider",
+    "Line Rider on beat",
 ]
 hashtags = ["linerider", "procedural", "satisfying", "generative", "music"]
 hashtag_count = [0, 2]
 
 [description]
 templates = [
-    "Procedurally generated Line Rider, synced to the music — speed, airtime, and landings all placed to hit the beat.",
+    "Procedurally generated Line Rider, synced to the music. Speed, airtime, and landings all placed to hit the beat.",
     "A Line Rider track generated from a musical spec. Same song, new seed, a completely different ride.",
     "Auto-generated Line Rider track synced to the song. Seed {seed}.",
 ]

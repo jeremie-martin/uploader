@@ -37,6 +37,7 @@ from loguru import logger
 from uploader import engine, youtube
 from uploader.atomic import now_iso
 from uploader.config import GlobalConfig, load_global_config
+from uploader.probe import probe_media
 from uploader.queue import build_backends
 from uploader.queue.base import BundleRef
 from uploader.state import State
@@ -183,6 +184,9 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
             state.record_failure({"failed_at": now_iso(), "bundle": ref.bundle_id, "project": ref.project, "reason": str(e)})
             return EXIT_TERMINAL
 
+        # Probe while the video is local (the temp dir is gone once we leave this block).
+        media = probe_media(local.video_path)
+
         try:
             creds = youtube.load_or_refresh(cfg.credentials_dir)
         except youtube.AuthError as e:
@@ -223,6 +227,8 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
         "privacy": meta.privacy,
         "playlist": meta.playlist,
         "values": ref.values,
+        "meta": ref.meta,
+        "media": media,
     }
     ref.backend.mark_uploaded(ref, record)
     state.record_upload(record)

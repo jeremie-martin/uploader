@@ -8,8 +8,9 @@ the "ready" sentinel — a half-transferred bundle is never picked up.
 
     {
       "project": "double-pendulum",
-      "values": { "count": 1000000, "boom_time": "12s" },
+      "values": { "count": 1000000, "boom_time": "12s" },   # used by templates + recorded
       "overrides": { "title": "...", "tags": ["..."], "playlist": "PL...", "privacy": "public" },
+      "meta": { "spec": "drop-heavy", "git_sha": "abc123" }, # recorded only; never uploaded
       "video": "video.mp4",          # optional; else the lone video file is used
       "created_at": "2026-06-16T12:00:00Z"   # optional; for FIFO ordering
     }
@@ -50,6 +51,11 @@ class BundleRef:
     @property
     def overrides(self) -> dict[str, Any]:
         return dict(self.sidecar.get("overrides") or {})
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        """Free-form reference data — recorded in the ledger, never uploaded or templated."""
+        return dict(self.sidecar.get("meta") or {})
 
     def __repr__(self) -> str:  # avoid recursing into self.backend
         return f"BundleRef({self.backend.name}:{self.bundle_id} project={self.project})"

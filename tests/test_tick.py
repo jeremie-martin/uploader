@@ -97,6 +97,10 @@ def test_single_upload(tf, tmp_path, monkeypatch):
     tf.expect(not (inbox / "alpha-001").exists(), "bundle dir removed after upload")
     uploads = State(tmp_path / "home").uploads()
     tf.expect(len(uploads) == 1 and uploads[0]["youtube_id"] == "VID0", "ledger has the upload")
+    tf.log("Ledger record carries the reference fields for later analytics")
+    tf.expect("media" in uploads[0], "record has a media block (empty here: fake video)")
+    tf.expect("meta" in uploads[0], "record has a meta block")
+    tf.expect("values" in uploads[0], "record has values")
 
 
 @recorded_test("tick_per_project_cadence")

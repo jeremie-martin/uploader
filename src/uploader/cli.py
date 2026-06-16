@@ -1,19 +1,23 @@
-"""``uploader`` command-line interface: auth | tick | preview | projects | ledger."""
+"""``uploader`` command-line interface: auth | status | stage | tick | preview | projects | ledger."""
 
 from __future__ import annotations
 
 import json
+import os
 import random
+import shutil
 import sys
 import zlib
+from datetime import datetime
 from pathlib import Path
 
 import click
 from loguru import logger
 
 from uploader import engine, youtube
+from uploader.atomic import atomic_write_json, now_iso
 from uploader.config import load_global_config
-from uploader.queue.base import SIDECAR_NAME
+from uploader.queue.base import SIDECAR_NAME, VIDEO_EXTENSIONS
 from uploader.state import State
 from uploader.tick import run_tick
 
@@ -21,6 +25,35 @@ from uploader.tick import run_tick
 def _configure_logging(verbose: bool) -> None:
     logger.remove()
     logger.add(sys.stderr, level="DEBUG" if verbose else "INFO", format="{time:HH:mm:ss} | {level: <7} | {message}")
+
+
+def _coerce(v: str) -> object:
+    """Coerce a CLI 'k=v' string value to int/float/bool when it clearly is one."""
+    for fn in (int, float):
+        try:
+            return fn(v)
+        except ValueError:
+            pass
+    if v.lower() in ("true", "false"):
+        return v.lower() == "true"
+    return v
+
+
+def _parse_kv(pairs: tuple[str, ...]) -> dict[str, object]:
+    out: dict[str, object] = {}
+    for p in pairs:
+        if "=" not in p:
+            raise click.BadParameter(f"expected key=value, got {p!r}")
+        k, v = p.split("=", 1)
+        out[k.strip()] = _coerce(v.strip())
+    return out
+
+
+def _default_inbox(cfg) -> Path:
+    for spec in cfg.backends:
+        if spec.kind == "local" and spec.options.get("inbox"):
+            return Path(os.path.expanduser(str(spec.options["inbox"])))
+    raise click.ClickException("no local backend with an 'inbox' in config; pass --inbox")
 
 
 @click.group()
@@ -42,6 +75,70 @@ def auth(ctx: click.Context) -> None:
     cfg.credentials_dir.mkdir(parents=True, exist_ok=True)
     youtube.run_oauth_flow(cfg.credentials_dir)
     click.echo(f"Token written under {cfg.credentials_dir}")
+
+
+@cli.command()
+@click.argument("videos", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--project", required=True, help="Project name (must have a projects/<name>.toml).")
+@click.option("--value", "-V", "values", multiple=True, help="Per-video template value, key=value (repeatable).")
+@click.option("--meta", "-M", "metas", multiple=True, help="Reference-only metadata, key=value (repeatable).")
+@click.option("--title", default=None, help="Override the title for these videos.")
+@click.option("--privacy", default=None, type=click.Choice(["private", "unlisted", "public"]))
+@click.option("--inbox", type=click.Path(path_type=Path), default=None, help="Target inbox (default: config's local backend).")
+@click.option("--copy", "force_copy", is_flag=True, help="Copy the video instead of hardlinking.")
+@click.pass_context
+def stage(
+    ctx: click.Context,
+    videos: tuple[Path, ...],
+    project: str,
+    values: tuple[str, ...],
+    metas: tuple[str, ...],
+    title: str | None,
+    privacy: str | None,
+    inbox: Path | None,
+    force_copy: bool,
+) -> None:
+    """Drop one or more finished videos into the inbox as ready bundles.
+
+    Writes the upload.json sidecar LAST (the ready sentinel) so a tick never sees a
+    half-staged bundle. Hardlinks the video by default (instant, no extra disk; the
+    original is untouched when the bundle is later removed)."""
+    cfg = load_global_config(ctx.obj["config_path"])
+    cfg.load_project(project)  # validate it exists / parses before staging anything
+    inbox = inbox or _default_inbox(cfg)
+    base_values = _parse_kv(values)
+    meta = _parse_kv(metas)
+    overrides: dict[str, object] = {}
+    if title is not None:
+        overrides["title"] = title
+    if privacy is not None:
+        overrides["privacy"] = privacy
+
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    for i, video in enumerate(videos):
+        if video.suffix.lower() not in VIDEO_EXTENSIONS:
+            raise click.ClickException(f"{video} is not a recognized video file")
+        bundle_id = f"{project}-{video.stem}-{stamp}-{i:02d}"
+        d = inbox / bundle_id
+        d.mkdir(parents=True, exist_ok=True)
+        dest = d / video.name
+        if force_copy:
+            shutil.copy2(video, dest)
+        else:
+            try:
+                os.link(video, dest)
+            except OSError:  # cross-device or unsupported → fall back to copy
+                shutil.copy2(video, dest)
+        sidecar = {"project": project, "created_at": now_iso()}
+        if base_values:
+            sidecar["values"] = base_values
+        if meta:
+            sidecar["meta"] = meta
+        if overrides:
+            sidecar["overrides"] = overrides
+        atomic_write_json(d / SIDECAR_NAME, sidecar)  # written last = ready sentinel
+        click.echo(f"staged {bundle_id}  ({video.name})")
+    click.echo(f"\n{len(videos)} bundle(s) staged in {inbox}")
 
 
 @cli.command()

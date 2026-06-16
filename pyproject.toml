@@ -1,0 +1,46 @@
+[project]
+name = "uploader"
+version = "0.1.0"
+description = "Generic, multi-project YouTube upload service: a project drops a finished video + a small sidecar, the uploader resolves metadata and publishes one at a time on a per-project cadence."
+requires-python = ">=3.12"
+dependencies = [
+    "google-api-python-client>=2.140.0",
+    "google-auth>=2.34.0",
+    "google-auth-oauthlib>=1.2.0",
+    "click>=8.1.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+# Object-storage queue backend (Backblaze B2 / Cloudflare R2 / any S3-compatible).
+# Only needed once you move the buffer off local disk; the local backend has no
+# extra deps.
+objectstore = [
+    "boto3>=1.34.0",
+]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.0.0",
+    "moto[s3]>=5.0.0",
+]
+
+[project.scripts]
+uploader = "uploader.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

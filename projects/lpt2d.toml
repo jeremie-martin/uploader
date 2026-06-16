@@ -1,0 +1,31 @@
+# lpt2d — 2D spectral path-tracer renders.
+# Seeded from lpt2d/publish/data/titles.toml. Per-video `values` are optional here
+# (e.g. { "rays": 6000000 }) — the templates work fine with none.
+
+playlist = "PL2G6-wO4Mi9-_XhA9GiD6Pd8N3K2X0NQO"
+privacy = "public"
+cadence = "2h"
+
+# Top-level keys must precede any [table] header in TOML.
+tags = ["satisfying", "mesmerizing", "generative", "raytracing", "shorts", "physics", "optics"]
+
+[title]
+templates = [
+    "this is hypnotic",
+    "i could watch this all day",
+    "i wrote a 2D raytracer for this",
+    "real raytraced light",
+    "pure optics",
+    "this is just light",
+    "all light, no AI",
+]
+hashtags = ["physics", "optics", "raytracing", "satisfying", "mesmerizing"]
+hashtag_count = [0, 2]
+
+[description]
+templates = [
+    "Rendered with a 2D spectral path-tracer I wrote in C++ and GLSL.",
+    "Simulated light. No AI.",
+    "Custom GPU path tracer, written from scratch.",
+    "2D light engine I built from scratch.",
+]

@@ -1,0 +1,32 @@
+# motiontwin — a bot playing a 2000s KadoKado/Motion Twin Flash game (Interwheel).
+# Seeded from motiontwin/scripts/motiontwin/data/titles.json. Per-video `values`:
+# { "score": <int> }. Note titles intentionally avoid revealing a new best (spoiler).
+
+playlist = "PL2G6-wO4Mi9--YpJbDAjVYSVNNPkw69CO"
+privacy = "public"
+cadence = "40m"
+
+# Top-level keys must precede any [table] header in TOML.
+tags = [
+    "shorts", "gameplay", "indie game", "score chase", "bot gameplay", "bot",
+    "interwheel", "kadokado", "flash game", "motiontwin", "roguelike",
+]
+
+[title]
+templates = [
+    "bot plays an old Flash game",
+    "bot score chase run",
+    "the bot gets greedy",
+    "can this bot beat its own record?",
+    "will this bot top its high score?",
+    "is this the run that beats it?",
+    "bot vs its own best - who wins?",
+]
+hashtags = ["shorts", "indiegame", "gameplay", "scorechase", "flashgame"]
+hashtag_count = [1, 1]
+
+[description]
+templates = [
+    "A bot takes one shot at a 2000s Flash game it's never seen. Watch how it ends.\n\nFan port of Interwheel, a KadoKado/Motion Twin Flash game from the public WebGamesArchives.",
+    "Watch a bot try to outlive a forgotten Flash game.\n\nOriginal Interwheel by Motion Twin / KadoKado; source and assets from WebGamesArchives.",
+]

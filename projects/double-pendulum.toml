@@ -1,0 +1,44 @@
+# double-pendulum — chaos physics simulations.
+# Seeded from double-pendulum/src/pendulum_tools/templates.py. Per-video `values`
+# expected in the sidecar: { "count": <int pendulums>, "boom_time": "<e.g. 12s>" }.
+
+playlist = ""          # set your PL... id
+privacy = "public"
+cadence = "2h"         # at most one double-pendulum upload every 2 hours
+
+# Always-on tags (replaces double-pendulum's BASE_TAGS). Top-level keys must precede
+# any [table] header in TOML, so `tags` lives here, before [title].
+tags = [
+    "double pendulum", "chaos theory", "physics simulation", "butterfly effect",
+    "satisfying video", "mesmerizing", "hypnotic", "physics", "simulation",
+    "chaos", "pendulum", "science", "math", "visualization", "oddly satisfying",
+]
+
+[title]
+templates = [
+    "{count|human} double pendulums, one tiny difference",
+    "Chaos Theory Visualized",
+    "{count|human} Simulations, One Tiny Difference",
+    "The Butterfly Effect",
+    "From Order to Chaos",
+    "Same Start, Different End",
+]
+hashtags = ["chaos", "physics", "satisfying", "simulation", "butterflyeffect"]
+hashtag_count = [0, 3]
+
+[description]
+templates = [
+    "{count|human} identical starts. Complete chaos.",
+    "They all start the same way. They don't end the same way.",
+    "Deterministic chaos: the outcome is predetermined, but impossible to predict.",
+    "{count|human} pendulums, one tiny difference in starting angle. Watch for {boom_time}.",
+]
+
+# Value-conditioned tags (replaces get_count_tags).
+[[tags_when]]
+when = "count >= 1000000"
+add = ["million pendulums", "1 million", "massive simulation"]
+
+[[tags_when]]
+when = "count >= 100000 and count < 1000000"
+add = ["100k pendulums", "hundred thousand"]

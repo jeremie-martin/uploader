@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+reports/
+.ruff_cache/
+.pytest_cache/
+
+# Local runtime state / secrets — never commit these.
+credentials/
+*.pickle
+client_secrets.json
+inbox/
+*.log

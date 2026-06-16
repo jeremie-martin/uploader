@@ -1,0 +1,39 @@
+# Global uploader config. Copy to $UPLOADER_HOME/config.toml (default
+# ~/.local/share/uploader/config.toml) and edit. All paths accept ~.
+#
+# Env overrides: UPLOADER_HOME, UPLOADER_PROJECTS_DIR, UPLOADER_CREDENTIALS_DIR.
+
+# Where durable state lives (ledger, per-project cadence clock, dedup). Stays on the
+# uploader host regardless of where videos are buffered.
+home = "~/.local/share/uploader"
+
+# OAuth token.pickle + client_secrets.json (one shared channel => one token).
+credentials_dir = "~/.local/share/uploader/credentials"
+
+# Per-project pool configs (projects/<name>.toml). Defaults to the repo's projects/.
+projects_dir = "~/prog/uploader/projects"
+
+# How long a freshly-arrived bundle must sit untouched before it's eligible (guards
+# against picking up a half-rsynced / half-uploaded bundle).
+settle_seconds = 5
+
+# ---------------------------------------------------------------------------
+# Queue backends — drained together. List as many as you like.
+# ---------------------------------------------------------------------------
+
+# Phase 1: a local inbox on the Pi (on-network generators rsync bundles here).
+[[backend]]
+kind = "local"
+inbox = "~/.local/share/uploader/inbox"
+
+# Phase 2 (add when you have off-network machines or a buffer bigger than the Pi):
+# off-network generators push bundles to an S3-compatible bucket; the uploader
+# downloads one video at a time. Backblaze B2 (cheapest for a deep buffer) or
+# Cloudflare R2 (zero egress). Credentials via env (AWS_ACCESS_KEY_ID/SECRET) or here.
+#
+# [[backend]]
+# kind = "objectstore"
+# bucket = "my-video-buffer"
+# prefix = "inbox"
+# endpoint_url = "https://s3.us-west-004.backblazeb2.com"   # B2 example
+# region = "us-west-004"

@@ -61,6 +61,7 @@ Template tokens: `{key}`, `{key|filter}`, `{key|f1|f2}`. Built-in filters: `huma
 
 ```bash
 uv run uploader auth                 # one-time: OAuth flow -> token.pickle
+uv run uploader status               # token health + backends + pending counts (no upload)
 uv run uploader projects             # list + validate per-project pool configs
 uv run uploader preview <bundle-dir> # resolve metadata for a bundle without uploading
 uv run uploader preview <dir> --samples 5   # browse random pool variations
@@ -68,6 +69,32 @@ uv run uploader tick                 # run one scheduler tick (the cron/timer en
 uv run uploader tick --dry-run       # select + resolve, but don't upload
 uv run uploader ledger -n 20         # recent uploads
 ```
+
+## Credentials & token
+
+A single OAuth `token.pickle` (one shared channel) lives in `credentials_dir`. Token
+handling is a side-effect of the oneshot design and needs almost no babysitting:
+
+- **Auto-refresh.** Each tick is a fresh process that re-reads `token.pickle` from disk
+  and refreshes the 1-hour access token in place when expired. No daemon holds stale
+  creds in memory.
+- **Rotate with no restart.** Drop a new `token.pickle` into `credentials_dir` and the
+  next tick uses it — nothing to reload or restart. `uploader status` shows current
+  health.
+- **If the refresh token dies** (revoked, or the weekly Testing-mode expiry below), a
+  tick logs the problem, returns a non-zero "needs auth" code, and *keeps* the bundle.
+  Uploads pause safely and resume automatically once you re-auth — no crash, no loss.
+
+**Stop the weekly re-auth (do this once):** Google expires refresh tokens after 7 days
+for OAuth apps in **"Testing"** publishing status (`youtube.upload` is a sensitive
+scope). In Google Cloud Console → *OAuth consent screen* → **Publish app** ("In
+production"). Refresh tokens then no longer expire weekly — you auth once.
+
+**Headless Pi:** the browser OAuth flow is awkward on a headless host, so run
+`uploader auth` on a desktop and `scp credentials/token.pickle` to the Pi's
+`credentials_dir`. With the app published, that's a one-time copy. Running the uploader
+on an always-on **desktop** instead avoids the scp entirely (`uploader auth` writes the
+token directly in place) and is the leanest setup to start with.
 
 ## Deployment
 
@@ -87,11 +114,17 @@ Install the timer (model: `systemd/user/uploader.{timer,service}`):
 ```bash
 cp config.toml.example ~/.local/share/uploader/config.toml   # then edit
 uv run uploader auth
+cp systemd/user/uploader.{timer,service} ~/.config/systemd/user/
+systemctl --user daemon-reload
 systemctl --user enable --now uploader.timer
+loginctl enable-linger "$USER"        # so the timer runs at boot without an active login
 ```
 
 The timer fires every ~15 min (poll granularity); the real per-project rate is each
-project's `cadence`, enforced inside the tick.
+project's `cadence`, enforced inside the tick. `enable-linger` is the one piece that
+makes it survive reboots / logouts — without it, user timers only run while you're
+logged in. Check it's alive with `systemctl --user list-timers uploader.timer` and
+`uploader status`.
 
 ## Crash safety
 

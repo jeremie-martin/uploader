@@ -97,6 +97,28 @@ def load_or_refresh(credentials_dir: Path) -> Credentials:
     raise AuthError("cached token is invalid and not refreshable — re-run `uploader auth`")
 
 
+def inspect_token(credentials_dir: Path) -> dict:
+    """Report token health without making a network call (for `uploader status`).
+
+    Returns a dict with ``present`` and, when present, ``valid``/``expired``/
+    ``refreshable``/``expiry`` so an operator can confirm auth on a headless host.
+    """
+    tp = token_path(credentials_dir)
+    if not tp.exists():
+        return {"present": False}
+    try:
+        creds: Credentials = pickle.loads(tp.read_bytes())
+    except Exception as e:  # noqa: BLE001 - any unpickle error is just "unreadable"
+        return {"present": True, "error": f"unreadable: {e}"}
+    return {
+        "present": True,
+        "valid": creds.valid,
+        "expired": creds.expired,
+        "refreshable": bool(creds.refresh_token),
+        "expiry": creds.expiry.isoformat() + "Z" if creds.expiry else None,
+    }
+
+
 def _is_rate_limit(e: HttpError) -> bool:
     if e.resp.status == 429:
         return True
@@ -182,6 +204,7 @@ __all__ = [
     "AuthError",
     "RateLimitError",
     "UploadError",
+    "inspect_token",
     "load_or_refresh",
     "run_oauth_flow",
     "upload",

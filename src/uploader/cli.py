@@ -109,6 +109,36 @@ def projects_cmd(ctx: click.Context) -> None:
 
 
 @cli.command()
+@click.pass_context
+def status(ctx: click.Context) -> None:
+    """Show token health + configured backends + pending bundle counts (no upload)."""
+    cfg = load_global_config(ctx.obj["config_path"])
+    t = youtube.inspect_token(cfg.credentials_dir)
+    if not t["present"]:
+        click.echo(f"token:    MISSING ({cfg.credentials_dir}/token.pickle) — run `uploader auth`")
+    elif "error" in t:
+        click.echo(f"token:    UNREADABLE — {t['error']}")
+    elif t["valid"]:
+        click.echo(f"token:    OK (valid, expires {t['expiry']})")
+    elif t["refreshable"]:
+        click.echo(f"token:    stale but auto-refreshable (expired {t['expiry']}) — next tick refreshes it")
+    else:
+        click.echo("token:    EXPIRED and NOT refreshable — run `uploader auth` (publish the OAuth app to avoid this)")
+
+    click.echo(f"projects: {len(cfg.known_projects())} ({', '.join(cfg.known_projects()) or '-'})")
+    try:
+        from uploader.queue import build_backends
+
+        for b in build_backends(cfg.backends, settle_seconds=cfg.settle_seconds):
+            refs = b.list_ready()
+            ready = sum(1 for r in refs if not r.is_resumed)
+            resumed = sum(1 for r in refs if r.is_resumed)
+            click.echo(f"backend:  {b.name} — {ready} ready, {resumed} awaiting cleanup")
+    except Exception as e:  # noqa: BLE001 - status must never crash
+        click.echo(f"backend:  ERROR listing — {e}")
+
+
+@cli.command()
 @click.option("-n", "--limit", type=int, default=10, help="Show the most recent N uploads.")
 @click.pass_context
 def ledger(ctx: click.Context, limit: int) -> None:

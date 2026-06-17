@@ -56,6 +56,19 @@ def _default_inbox(cfg) -> Path:
     raise click.ClickException("no local backend with an 'inbox' in config; pass --inbox")
 
 
+def _reserve_bundle_dir(inbox: Path, bundle_id: str) -> tuple[str, Path]:
+    """Create a unique bundle directory, preserving the readable base id when free."""
+    for attempt in range(1000):
+        candidate = bundle_id if attempt == 0 else f"{bundle_id}-{attempt:03d}"
+        d = inbox / candidate
+        try:
+            d.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            continue
+        return candidate, d
+    raise click.ClickException(f"could not create a unique bundle directory for {bundle_id}")
+
+
 @click.group()
 @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None, help="Path to config.toml.")
 @click.option("-v", "--verbose", is_flag=True, help="Debug logging.")
@@ -119,8 +132,7 @@ def stage(
         if video.suffix.lower() not in VIDEO_EXTENSIONS:
             raise click.ClickException(f"{video} is not a recognized video file")
         bundle_id = f"{project}-{video.stem}-{stamp}-{i:02d}"
-        d = inbox / bundle_id
-        d.mkdir(parents=True, exist_ok=True)
+        bundle_id, d = _reserve_bundle_dir(inbox, bundle_id)
         dest = d / video.name
         if force_copy:
             shutil.copy2(video, dest)

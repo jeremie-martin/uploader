@@ -19,6 +19,7 @@ the "ready" sentinel - a half-transferred bundle is never picked up.
 from __future__ import annotations
 
 import abc
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -55,7 +56,12 @@ class BundleRef:
     @property
     def meta(self) -> dict[str, Any]:
         """Free-form reference data - recorded in the ledger, never uploaded or templated."""
-        return dict(self.sidecar.get("meta") or {})
+        raw = self.sidecar.get("meta")
+        if raw is None:
+            return {}
+        if not isinstance(raw, Mapping):
+            raise ValueError("sidecar 'meta' must be an object")
+        return dict(raw)
 
     def __repr__(self) -> str:  # avoid recursing into self.backend
         return f"BundleRef({self.backend.name}:{self.bundle_id} project={self.project})"

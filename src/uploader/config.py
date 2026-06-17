@@ -222,7 +222,12 @@ def load_global_config(path: Path | None = None) -> GlobalConfig:
     if not backends_raw:
         # Default: a single local inbox under HOME.
         backends_raw = [{"kind": "local", "inbox": str(home / "inbox")}]
-    backends = [BackendSpec(kind=b["kind"], options={k: v for k, v in b.items() if k != "kind"}) for b in backends_raw]
+    backends: list[BackendSpec] = []
+    for b in backends_raw:
+        options = {k: v for k, v in b.items() if k != "kind"}
+        if b["kind"] == "local" and "inbox" in options:
+            options["inbox"] = Path(os.path.expanduser(str(options["inbox"])))
+        backends.append(BackendSpec(kind=b["kind"], options=options))
 
     return GlobalConfig(
         home=home,

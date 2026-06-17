@@ -40,7 +40,7 @@ from uploader.config import GlobalConfig, load_global_config
 from uploader.probe import probe_media
 from uploader.queue import build_backends
 from uploader.queue.base import BundleRef
-from uploader.state import State
+from uploader.state import State, _parse_iso
 
 EXIT_OK = 0
 EXIT_TERMINAL = 1
@@ -102,8 +102,21 @@ def _finalize_resumed(ref: BundleRef, state: State) -> None:
     if yt and not state.ledger_has_youtube_id(yt):
         state.record_upload(record)
         logger.info("resumed: appended ledger for {} (yt {})", ref.bundle_id, yt)
+    uploaded_at = _parse_iso(record.get("uploaded_at") if isinstance(record.get("uploaded_at"), str) else None)
+    last_upload = state.last_upload_at(ref.project)
+    if uploaded_at is not None and (last_upload is None or uploaded_at > last_upload):
+        state.touch_project(ref.project, uploaded_at)
+        logger.info("resumed: restored cadence clock for {} from marker", ref.project)
     ref.backend.remove(ref)
     logger.info("resumed: removed already-uploaded bundle {}", ref.bundle_id)
+
+
+def _mark_terminal(ref: BundleRef, state: State, reason: str, *, dry_run: bool) -> int:
+    logger.error("{} failed terminally: {}", ref.bundle_id, reason)
+    if not dry_run:
+        ref.backend.mark_failed(ref, reason)
+        state.record_failure({"failed_at": now_iso(), "bundle": ref.bundle_id, "project": ref.project, "reason": reason})
+    return EXIT_TERMINAL
 
 
 def _select_due(fresh: list[BundleRef], cfg: GlobalConfig, state: State, now: float) -> BundleRef | None:
@@ -157,15 +170,16 @@ def run_tick(config_path: Path | None = None, *, dry_run: bool = False) -> int:
 def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bool) -> int:
     pc = cfg.load_project(ref.project)
 
+    try:
+        sidecar_meta = ref.meta
+    except (TypeError, ValueError) as e:
+        return _mark_terminal(ref, state, f"sidecar meta: {e}", dry_run=dry_run)
+
     # Resolve metadata (a malformed template/bundle is a terminal failure for this bundle).
     try:
         meta = engine.pick(pc, ref.values, rng=_seeded_rng(ref.bundle_id), overrides=ref.overrides)
     except engine.TemplateError as e:
-        logger.error("metadata resolution failed for {}: {}", ref.bundle_id, e)
-        if not dry_run:
-            ref.backend.mark_failed(ref, f"metadata: {e}")
-            state.record_failure({"failed_at": now_iso(), "bundle": ref.bundle_id, "project": ref.project, "reason": str(e)})
-        return EXIT_TERMINAL
+        return _mark_terminal(ref, state, f"metadata: {e}", dry_run=dry_run)
 
     logger.info(
         "resolved {}: title={!r} tags={} privacy={} playlist={}",
@@ -179,10 +193,7 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
         try:
             local = ref.backend.fetch(ref, Path(tmp))
         except Exception as e:
-            logger.error("fetch failed for {}: {}", ref.bundle_id, e)
-            ref.backend.mark_failed(ref, f"fetch: {e}")
-            state.record_failure({"failed_at": now_iso(), "bundle": ref.bundle_id, "project": ref.project, "reason": str(e)})
-            return EXIT_TERMINAL
+            return _mark_terminal(ref, state, f"fetch: {e}", dry_run=dry_run)
 
         # Probe while the video is local (the temp dir is gone once we leave this block).
         media = probe_media(local.video_path)
@@ -208,10 +219,7 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
             logger.warning("RATE LIMIT: {} (keeping bundle {})", e, ref.bundle_id)
             return EXIT_RATE_LIMIT
         except youtube.UploadError as e:
-            logger.error("upload failed for {}: {}", ref.bundle_id, e)
-            ref.backend.mark_failed(ref, f"upload: {e}")
-            state.record_failure({"failed_at": now_iso(), "bundle": ref.bundle_id, "project": ref.project, "reason": str(e)})
-            return EXIT_TERMINAL
+            return _mark_terminal(ref, state, f"upload: {e}", dry_run=dry_run)
 
     # --- crash-safe commit: marker → ledger → cadence clock → remove ----
     record = {
@@ -227,7 +235,7 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
         "privacy": meta.privacy,
         "playlist": meta.playlist,
         "values": ref.values,
-        "meta": ref.meta,
+        "meta": sidecar_meta,
         "media": media,
     }
     ref.backend.mark_uploaded(ref, record)

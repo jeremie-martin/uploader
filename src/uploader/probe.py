@@ -47,14 +47,29 @@ def probe_media(path: Path) -> dict[str, Any]:
     except (subprocess.SubprocessError, json.JSONDecodeError, OSError) as e:
         logger.warning("ffprobe failed for {}: {}", path, e)
         return {}
+    if not isinstance(data, dict):
+        return {}
 
     fmt = data.get("format", {})
+    if not isinstance(fmt, dict):
+        fmt = {}
     media: dict[str, Any] = {}
     if fmt.get("duration"):
-        media["duration_s"] = round(float(fmt["duration"]), 3)
+        try:
+            media["duration_s"] = round(float(fmt["duration"]), 3)
+        except (TypeError, ValueError):
+            pass
     if fmt.get("size"):
-        media["size_bytes"] = int(fmt["size"])
-    for s in data.get("streams", []):
+        try:
+            media["size_bytes"] = int(fmt["size"])
+        except (TypeError, ValueError):
+            pass
+    streams = data.get("streams", [])
+    if not isinstance(streams, list):
+        streams = []
+    for s in streams:
+        if not isinstance(s, dict):
+            continue
         kind = s.get("codec_type")
         if kind == "video" and "width" not in media:
             media["width"] = s.get("width")

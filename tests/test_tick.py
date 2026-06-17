@@ -7,6 +7,7 @@ end-to-end through a real LocalQueue + real State, without touching the network.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tests.framework import recorded_test
@@ -53,11 +54,22 @@ def _setup(tmp_path: Path, projects: dict[str, str], monkeypatch) -> Path:
     return config_path
 
 
-def _make_bundle(inbox: Path, bundle_id: str, project: str, *, created_at: str, marker: dict | None = None) -> Path:
+def _make_bundle(
+    inbox: Path,
+    bundle_id: str,
+    project: str,
+    *,
+    created_at: str,
+    marker: dict | None = None,
+    sidecar_extra: dict | None = None,
+) -> Path:
     d = inbox / bundle_id
     d.mkdir(parents=True, exist_ok=True)
     (d / "video.mp4").write_bytes(b"fake-video-bytes")
-    (d / "upload.json").write_text(json.dumps({"project": project, "created_at": created_at}))
+    sidecar = {"project": project, "created_at": created_at}
+    if sidecar_extra:
+        sidecar.update(sidecar_extra)
+    (d / "upload.json").write_text(json.dumps(sidecar))
     if marker is not None:
         (d / "uploaded").write_text(json.dumps(marker))
     return d
@@ -163,6 +175,31 @@ def test_resumed_bundle_is_finalized_not_reuploaded(tf, tmp_path, monkeypatch):
     tf.expect(len(uploads) == 1 and uploads[0]["youtube_id"] == "VIDX", "marker recovered into ledger")
 
 
+@recorded_test("tick_resumed_upload_restores_cadence")
+def test_resumed_upload_restores_cadence_before_selecting_fresh(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"alpha": "1h"}, monkeypatch)
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    now = datetime(2026, 6, 17, 10, 30, tzinfo=UTC).timestamp()
+    monkeypatch.setattr(tick.time, "time", lambda: now)
+    marker = {
+        "uploaded_at": "2026-06-17T10:00:00Z",
+        "youtube_id": "VIDX",
+        "youtube_url": "https://youtu.be/VIDX",
+        "project": "alpha",
+    }
+    _make_bundle(inbox, "alpha-crashed", "alpha", created_at="2026-06-17T09:00:00Z", marker=marker)
+    _make_bundle(inbox, "alpha-fresh", "alpha", created_at="2026-06-17T09:30:00Z")
+
+    code = tick.run_tick(cfg)
+    tf.expect(code == tick.EXIT_OK, "tick OK")
+    tf.expect(len(rec.calls) == 0, "fresh same-project bundle is throttled by restored marker cadence")
+    tf.expect(not (inbox / "alpha-crashed").exists(), "resumed bundle cleaned up")
+    tf.expect((inbox / "alpha-fresh").exists(), "fresh bundle remains queued")
+    remaining = State(tmp_path / "home").seconds_until_due("alpha", 3600, now=now)
+    tf.expect(1700 <= remaining <= 1800, f"cadence clock restored from uploaded marker (remaining {remaining})")
+
+
 @recorded_test("tick_dedup_on_resume")
 def test_resume_dedup(tf, tmp_path, monkeypatch):
     cfg = _setup(tmp_path, {"alpha": "0s"}, monkeypatch)
@@ -190,3 +227,23 @@ def test_dry_run(tf, tmp_path, monkeypatch):
     tf.expect(code == tick.EXIT_OK, "dry-run OK")
     tf.expect(len(rec.calls) == 0, "dry-run does not upload")
     tf.expect((inbox / "alpha-001").exists(), "dry-run keeps the bundle")
+
+
+@recorded_test("tick_invalid_meta_before_upload")
+def test_invalid_sidecar_meta_fails_before_upload(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"alpha": "0s"}, monkeypatch)
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(
+        inbox,
+        "alpha-bad-meta",
+        "alpha",
+        created_at="2026-06-16T10:00:00Z",
+        sidecar_extra={"meta": "not-an-object"},
+    )
+
+    code = tick.run_tick(cfg)
+    tf.expect(code == tick.EXIT_TERMINAL, f"invalid meta returns terminal failure (got {code})")
+    tf.expect(len(rec.calls) == 0, "invalid meta is rejected before upload")
+    tf.expect((inbox / "alpha-bad-meta" / "failed").exists(), "bundle is marked failed for inspection")
+    tf.expect(State(tmp_path / "home").uploads() == [], "no upload ledger entry is written")

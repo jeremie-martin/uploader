@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.framework import recorded_test
-from uploader.config import load_project_config, parse_duration
+from uploader.config import load_global_config, load_project_config, parse_duration
 
 REPO_PROJECTS = Path(__file__).resolve().parents[1] / "projects"
 
@@ -51,6 +51,27 @@ def test_reversed_hashtag_count_is_clamped(tf, tmp_path):
     lo, hi = pc.title.hashtag_count
     tf.expect(lo <= hi, f"hashtag_count normalized to lo<=hi (got {(lo, hi)})")
     tf.expect(lo >= 0, "lo is non-negative")
+
+
+@recorded_test("config_expands_local_inbox")
+def test_local_backend_inbox_expands_user(tf, tmp_path, monkeypatch):
+    for env in ("UPLOADER_HOME", "UPLOADER_PROJECTS_DIR", "UPLOADER_CREDENTIALS_DIR"):
+        monkeypatch.delenv(env, raising=False)
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        """\
+home = "~/uploader-home"
+
+[[backend]]
+kind = "local"
+inbox = "~/.local/share/uploader/inbox"
+"""
+    )
+
+    loaded = load_global_config(cfg)
+    inbox = loaded.backends[0].options["inbox"]
+    tf.expect(Path(inbox).is_absolute(), f"local inbox is absolute after expansion (got {inbox!r})")
+    tf.expect("~" not in str(inbox), f"local inbox contains no literal '~' (got {inbox!r})")
 
 
 @recorded_test("config_real_projects_load")

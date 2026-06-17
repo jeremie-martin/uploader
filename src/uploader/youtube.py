@@ -86,14 +86,20 @@ def load_or_refresh(credentials_dir: Path) -> Credentials:
     tp = token_path(credentials_dir)
     if not tp.exists():
         raise AuthError(f"no token at {tp} - run `uploader auth` first")
-    creds: Credentials = pickle.loads(tp.read_bytes())
-    if creds.valid:
-        return creds
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        atomic_write_bytes(tp, pickle.dumps(creds))
-        logger.info("refreshed access token; pickle updated")
-        return creds
+    try:
+        creds: Credentials = pickle.loads(tp.read_bytes())
+    except Exception as e:  # noqa: BLE001 - token cache errors should be scheduler auth failures
+        raise AuthError(f"cached token at {tp} is unreadable - re-run `uploader auth`: {e}") from e
+    try:
+        if creds.valid:
+            return creds
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            atomic_write_bytes(tp, pickle.dumps(creds))
+            logger.info("refreshed access token; pickle updated")
+            return creds
+    except Exception as e:  # noqa: BLE001 - google auth raises several refresh/cache exceptions
+        raise AuthError(f"cached token refresh failed - re-run `uploader auth`: {e}") from e
     raise AuthError("cached token is invalid and not refreshable - re-run `uploader auth`")
 
 

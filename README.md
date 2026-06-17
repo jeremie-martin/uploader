@@ -49,6 +49,7 @@ playlist = "PL..."
 privacy  = "public"
 cadence  = "2h"            # this project uploads at most once every 2h
 upload_order = "random"    # optional: first, last, or random
+tags = ["double pendulum", "chaos theory"]
 
 [title]
 templates     = ["{count|human} double pendulums, one tiny difference", "Chaos Theory Visualized"]
@@ -58,12 +59,18 @@ hashtag_count = [0, 2]
 [description]
 templates = ["{count|human} identical starts. Complete chaos."]
 
-tags = ["double pendulum", "chaos theory"]
-
 [[tags_when]]              # value-conditioned tags
 when = "count >= 1000000"
 add  = ["million pendulums", "1 million"]
 ```
+
+Top-level keys, including `tags`, must appear before `[title]`, `[description]`, or
+`[[tags_when]]`; the loader rejects misplaced keys because TOML would otherwise attach
+them to the previous table.
+
+Bundle selection is two-level: global `upload_order` chooses which due project wins the
+tick; a project's own `upload_order` only chooses among that selected project's queued
+bundles. If omitted, the project inherits the global order.
 
 Template tokens: `{key}`, `{key|filter}`, `{key|f1|f2}`. Built-in filters: `human`
 (`1000000` → `1 Million`), `comma` (`1,000,000`), `upper`, `lower`, `title`, `int`.

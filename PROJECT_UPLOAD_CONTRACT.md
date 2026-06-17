@@ -20,7 +20,8 @@ choose project-specific values. It only publishes completed videos.
   It is unique inside that backend and may contain `/` for organization.
 - Sidecar: `upload.json`. Its presence means the bundle is ready to be considered.
 - Pool config: `projects/<project>.toml`, owned by the project. It contains title,
-  description, tag, playlist, privacy, category, and cadence rules.
+  description, tags, playlist, privacy, category, cadence, and optional upload-order
+  rules.
 
 ## Fast path: use the staging command
 
@@ -97,7 +98,7 @@ Project config keys:
 | `privacy` | `private`, `unlisted`, or `public`. Defaults to `private`. |
 | `category_id` | YouTube category ID as a string. Defaults to `"1"` (Film & Animation). |
 | `cadence` | Minimum time between successful uploads for this project, such as `40m`, `2h`, `1d`, or seconds. |
-| `upload_order` | Optional bundle selection for this project: `first`, `last`, or `random`. |
+| `upload_order` | Optional bundle selection within this project: `first`, `last`, or `random`. If omitted, the global order is used. |
 | `tags` | Always-on YouTube tags. Templates are allowed. |
 | `[title].templates` | Candidate title templates. One is selected deterministically from the bundle ID. |
 | `[title].hashtags` | Hashtags that may be appended to the title. Do not include `#`. |
@@ -209,7 +210,7 @@ Sidecar fields:
 | --- | --- | --- |
 | `project` | Yes | Must match `projects/<project>.toml`. Unknown projects stay in the queue. |
 | `video` | No | File name of the video inside the bundle. If omitted, the uploader uses the lone recognized video file. |
-| `created_at` | No | ISO-8601 timestamp, preferably UTC with `Z`. Used for FIFO ordering. If omitted or invalid, sidecar/object mtime is used. |
+| `created_at` | No | ISO-8601 timestamp, preferably UTC with `Z`. Used for `first`/`last` upload ordering. If omitted or invalid, sidecar/object mtime is used. |
 | `values` | No | JSON object used by title, description, tag, and `tags_when` templates. Also recorded in the ledger. |
 | `meta` | No | JSON object recorded in the ledger only. It is never templated and never sent to YouTube. |
 | `overrides` | No | JSON object that replaces resolved upload metadata for one-off uploads. |
@@ -305,20 +306,22 @@ uv run uploader status
 
 What each command proves:
 
-- `projects`: every `projects/*.toml` parses and reports cadence, privacy, playlist,
-  title count, description count, and tag count.
+- `projects`: every `projects/*.toml` parses and reports cadence, privacy, project
+  upload order, playlist, title count, description count, and tag count.
 - `preview`: reads one bundle sidecar and validates that title, description, tags,
   playlist, and privacy can be resolved without uploading.
 - `tick --dry-run`: runs the exact scheduler selection and metadata resolution path
   without fetching or uploading the selected video.
-- `status`: shows token health and pending counts for each backend.
+- `status`: shows token health, global scheduler settings, and pending counts for each
+  backend.
 
 ## 6. Runtime behavior project authors should know
 
 - One tick uploads at most one fresh bundle total.
-- Fresh selection applies global `upload_order` (`first`, `last`, or `random`) among
-  bundles whose project cadence is due. A project can override that for its own queued
-  bundles with `upload_order` in `projects/<project>.toml`.
+- Fresh selection first applies global `upload_order` (`first`, `last`, or `random`) to
+  the full set of bundles whose project cadence is due, which determines the winning
+  project for this tick. If that project defines `upload_order`, the project setting then
+  chooses which queued bundle from that project uploads.
 - Cadence is per project and advances only after a successful upload.
 - Auth failures and YouTube rate limits keep the bundle for retry.
 - Fetch failures, upload terminal failures, and metadata template errors mark the

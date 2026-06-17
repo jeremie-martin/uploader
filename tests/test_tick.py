@@ -19,6 +19,7 @@ home = "{home}"
 credentials_dir = "{creds}"
 projects_dir = "{projects}"
 settle_seconds = 0
+{upload_order}
 
 [[backend]]
 kind = "local"
@@ -27,6 +28,7 @@ inbox = "{inbox}"
 
 PROJECT_TMPL = """\
 cadence = "{cadence}"
+{project_upload_order}
 privacy = "public"
 playlist = "PL_{name}"
 tags = ["{name}"]
@@ -36,7 +38,14 @@ templates = ["{name} video"]
 """
 
 
-def _setup(tmp_path: Path, projects: dict[str, str], monkeypatch) -> Path:
+def _setup(
+    tmp_path: Path,
+    projects: dict[str, str],
+    monkeypatch,
+    *,
+    upload_order: str | None = None,
+    project_upload_orders: dict[str, str] | None = None,
+) -> Path:
     for env in ("UPLOADER_HOME", "UPLOADER_PROJECTS_DIR", "UPLOADER_CREDENTIALS_DIR"):
         monkeypatch.delenv(env, raising=False)
     home = tmp_path / "home"
@@ -45,11 +54,24 @@ def _setup(tmp_path: Path, projects: dict[str, str], monkeypatch) -> Path:
     inbox = tmp_path / "inbox"
     for p in (home, creds, projects_dir, inbox):
         p.mkdir(parents=True, exist_ok=True)
+    project_upload_orders = project_upload_orders or {}
     for name, cadence in projects.items():
-        (projects_dir / f"{name}.toml").write_text(PROJECT_TMPL.format(name=name, cadence=cadence))
+        (projects_dir / f"{name}.toml").write_text(
+            PROJECT_TMPL.format(
+                name=name,
+                cadence=cadence,
+                project_upload_order=f'upload_order = "{project_upload_orders[name]}"' if name in project_upload_orders else "",
+            )
+        )
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        CONFIG_TMPL.format(home=home, creds=creds, projects=projects_dir, inbox=inbox)
+        CONFIG_TMPL.format(
+            home=home,
+            creds=creds,
+            projects=projects_dir,
+            inbox=inbox,
+            upload_order=f'upload_order = "{upload_order}"' if upload_order else "",
+        )
     )
     return config_path
 
@@ -137,6 +159,71 @@ def test_cadence_round_robin(tf, tmp_path, monkeypatch):
         projects_uploaded == ["alpha", "beta"],
         "alpha (oldest) first; alpha then throttled so beta goes despite alpha-002 being older",
     )
+
+
+@recorded_test("tick_upload_order_last")
+def test_upload_order_last_selects_newest_due(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"alpha": "0s"}, monkeypatch, upload_order="last")
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(inbox, "alpha-001", "alpha", created_at="2026-06-16T10:00:00Z")
+    _make_bundle(inbox, "alpha-002", "alpha", created_at="2026-06-16T12:00:00Z")
+
+    tick.run_tick(cfg)
+
+    tf.expect(len(rec.calls) == 1, f"one upload (got {len(rec.calls)})")
+    uploads = State(tmp_path / "home").uploads()
+    tf.expect(uploads[0]["bundle"] == "alpha-002", f"newest due bundle selected (got {uploads[0]['bundle']!r})")
+
+
+@recorded_test("tick_upload_order_random")
+def test_upload_order_random_uses_random_choice(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"alpha": "0s"}, monkeypatch, upload_order="random")
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(inbox, "alpha-001", "alpha", created_at="2026-06-16T10:00:00Z")
+    _make_bundle(inbox, "alpha-002", "alpha", created_at="2026-06-16T12:00:00Z")
+    monkeypatch.setattr(tick.random, "choice", lambda refs: refs[-1])
+
+    tick.run_tick(cfg)
+
+    tf.expect(len(rec.calls) == 1, f"one upload (got {len(rec.calls)})")
+    uploads = State(tmp_path / "home").uploads()
+    tf.expect(uploads[0]["bundle"] == "alpha-002", f"random choice result selected (got {uploads[0]['bundle']!r})")
+
+
+@recorded_test("tick_project_upload_order_random")
+def test_project_upload_order_random_overrides_global_first(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"line": "0s"}, monkeypatch, project_upload_orders={"line": "random"})
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(inbox, "line-001", "line", created_at="2026-06-16T10:00:00Z")
+    _make_bundle(inbox, "line-002", "line", created_at="2026-06-16T12:00:00Z")
+    monkeypatch.setattr(tick.random, "choice", lambda refs: refs[-1])
+
+    tick.run_tick(cfg)
+
+    tf.expect(len(rec.calls) == 1, f"one upload (got {len(rec.calls)})")
+    uploads = State(tmp_path / "home").uploads()
+    tf.expect(uploads[0]["bundle"] == "line-002", f"project random choice selected (got {uploads[0]['bundle']!r})")
+
+
+@recorded_test("tick_project_upload_order_preserves_global_project_order")
+def test_project_upload_order_preserves_global_project_order(tf, tmp_path, monkeypatch):
+    cfg = _setup(tmp_path, {"line": "0s", "beta": "0s"}, monkeypatch, project_upload_orders={"line": "random"})
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(inbox, "line-001", "line", created_at="2026-06-16T10:00:00Z")
+    _make_bundle(inbox, "beta-001", "beta", created_at="2026-06-16T12:00:00Z")
+    _make_bundle(inbox, "line-002", "line", created_at="2026-06-16T14:00:00Z")
+    monkeypatch.setattr(tick.random, "choice", lambda refs: refs[-1])
+
+    tick.run_tick(cfg)
+
+    tf.expect(len(rec.calls) == 1, f"one upload (got {len(rec.calls)})")
+    uploads = State(tmp_path / "home").uploads()
+    tf.expect(uploads[0]["project"] == "line", f"oldest due project's override does not skip it (got {uploads[0]['project']!r})")
+    tf.expect(uploads[0]["bundle"] == "line-002", f"line's project order still chooses within line (got {uploads[0]['bundle']!r})")
 
 
 @recorded_test("cadence_clock_is_timezone_correct")

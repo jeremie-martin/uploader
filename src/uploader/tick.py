@@ -10,7 +10,8 @@ One tick:
 3. **Finalize resumed bundles** (uploaded marker present → ledger-if-needed + remove);
    never re-upload them.
 4. **Per-project cadence selection**: among fresh bundles whose project is *due*
-   (``now - last_upload >= cadence``), pick the oldest. If none are due, exit cleanly.
+   (``now - last_upload >= cadence``), apply the configured upload order. If none are
+   due, exit cleanly.
 5. Fetch one video, resolve metadata via the engine, upload, then commit crash-safely:
    marker (fsync) → ledger (dedup) → cadence clock → remove bundle.
 
@@ -119,9 +120,18 @@ def _mark_terminal(ref: BundleRef, state: State, reason: str, *, dry_run: bool) 
     return EXIT_TERMINAL
 
 
+def _choose_by_order(refs: list[BundleRef], order: str) -> BundleRef:
+    refs = sorted(refs, key=lambda r: (r.created_at, r.bundle_id))
+    if order == "last":
+        return refs[-1]
+    if order == "random":
+        return random.choice(refs)
+    return refs[0]
+
+
 def _select_due(fresh: list[BundleRef], cfg: GlobalConfig, state: State, now: float) -> BundleRef | None:
-    """Pick the oldest bundle whose project is due per its cadence."""
-    due: list[BundleRef] = []
+    """Pick one bundle whose project is due per its cadence."""
+    due: list[tuple[BundleRef, str | None]] = []
     for ref in fresh:
         try:
             pc = cfg.load_project(ref.project)
@@ -129,11 +139,21 @@ def _select_due(fresh: list[BundleRef], cfg: GlobalConfig, state: State, now: fl
             logger.warning("no project config for {!r}; leaving bundle {} in queue", ref.project, ref.bundle_id)
             continue
         if state.seconds_until_due(ref.project, pc.cadence_seconds, now=now) <= 0:
-            due.append(ref)
+            due.append((ref, pc.upload_order))
     if not due:
         return None
-    due.sort(key=lambda r: (r.created_at, r.bundle_id))
-    return due[0]
+
+    by_project: dict[str, list[BundleRef]] = {}
+    project_orders: dict[str, str | None] = {}
+    for ref, order in due:
+        by_project.setdefault(ref.project, []).append(ref)
+        project_orders[ref.project] = order
+
+    global_pick = _choose_by_order([ref for ref, _ in due], cfg.upload_order)
+    project_order = project_orders[global_pick.project]
+    if project_order is None:
+        return global_pick
+    return _choose_by_order(by_project[global_pick.project], project_order)
 
 
 def run_tick(config_path: Path | None = None, *, dry_run: bool = False) -> int:

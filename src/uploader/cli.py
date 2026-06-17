@@ -212,6 +212,7 @@ def projects_cmd(ctx: click.Context) -> None:
             continue
         click.echo(
             f"  {name}: cadence={pc.cadence_seconds}s privacy={pc.privacy} "
+            f"order={pc.upload_order or '-'} "
             f"playlist={pc.playlist or '-'} titles={len(pc.title.templates)} "
             f"descs={len(pc.description.templates)} tags={len(pc.tags)}"
         )
@@ -235,6 +236,7 @@ def status(ctx: click.Context) -> None:
         click.echo("token:    EXPIRED and NOT refreshable - run `uploader auth` (publish the OAuth app to avoid this)")
 
     click.echo(f"projects: {len(cfg.known_projects())} ({', '.join(cfg.known_projects()) or '-'})")
+    click.echo(f"scheduler: upload_order={cfg.upload_order} settle_seconds={cfg.settle_seconds:g}")
     try:
         from uploader.queue import build_backends
 

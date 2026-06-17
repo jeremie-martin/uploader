@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.framework import recorded_test
-from uploader.config import load_global_config, load_project_config, parse_duration
+from uploader.config import load_global_config, load_project_config, parse_duration, parse_upload_order
 
 REPO_PROJECTS = Path(__file__).resolve().parents[1] / "projects"
 
@@ -20,6 +20,15 @@ def test_parse_duration(tf):
     tf.expect(parse_duration("1d") == 86400, "1d")
     tf.expect(parse_duration(90) == 90, "bare int = seconds")
     tf.expect(parse_duration("") == 0, "empty = 0")
+
+
+@recorded_test("config_upload_order")
+def test_parse_upload_order(tf):
+    tf.expect(parse_upload_order("first") == "first", "first")
+    tf.expect(parse_upload_order("last") == "last", "last")
+    tf.expect(parse_upload_order("random") == "random", "random")
+    tf.expect(parse_upload_order("oldest") == "first", "oldest aliases first")
+    tf.expect(parse_upload_order("newest") == "last", "newest aliases last")
 
 
 @recorded_test("config_misplaced_key_guard")
@@ -72,6 +81,39 @@ inbox = "~/.local/share/uploader/inbox"
     inbox = loaded.backends[0].options["inbox"]
     tf.expect(Path(inbox).is_absolute(), f"local inbox is absolute after expansion (got {inbox!r})")
     tf.expect("~" not in str(inbox), f"local inbox contains no literal '~' (got {inbox!r})")
+
+
+@recorded_test("config_global_upload_order")
+def test_global_upload_order(tf, tmp_path, monkeypatch):
+    for env in ("UPLOADER_HOME", "UPLOADER_PROJECTS_DIR", "UPLOADER_CREDENTIALS_DIR"):
+        monkeypatch.delenv(env, raising=False)
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        """\
+home = "~/uploader-home"
+upload_order = "random"
+"""
+    )
+
+    loaded = load_global_config(cfg)
+    tf.expect(loaded.upload_order == "random", f"upload_order parsed (got {loaded.upload_order!r})")
+
+
+@recorded_test("config_project_upload_order")
+def test_project_upload_order(tf, tmp_path):
+    cfg = tmp_path / "project.toml"
+    cfg.write_text(
+        """\
+cadence = "1h"
+upload_order = "random"
+
+[title]
+templates = ["demo"]
+"""
+    )
+
+    pc = load_project_config(cfg)
+    tf.expect(pc.upload_order == "random", f"project upload_order parsed (got {pc.upload_order!r})")
 
 
 @recorded_test("config_real_projects_load")

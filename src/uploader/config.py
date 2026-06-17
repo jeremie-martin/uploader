@@ -53,6 +53,7 @@ class ProjectConfig:
     privacy: str = "private"
     category_id: str = CATEGORY_FILM_ANIMATION
     cadence_seconds: int = 0
+    upload_order: str | None = None
     title: TitleSpec = field(default_factory=TitleSpec)
     description: DescriptionSpec = field(default_factory=DescriptionSpec)
     tags: list[str] = field(default_factory=list)
@@ -78,7 +79,7 @@ def parse_duration(value: str | int | float) -> int:
 # loudly instead of silently falling back to a default (a typo'd `cadence` would otherwise
 # disable that project's throttling). Top-level keys that appear under a sub-table are
 # almost always the classic TOML trap (a top-level key written after a [table] header).
-_TOP_LEVEL_KEYS = {"playlist", "privacy", "category_id", "cadence", "tags", "title", "description", "tags_when"}
+_TOP_LEVEL_KEYS = {"playlist", "privacy", "category_id", "cadence", "upload_order", "tags", "title", "description", "tags_when"}
 _TITLE_KEYS = {"templates", "hashtags", "hashtag_count"}
 _DESCRIPTION_KEYS = {"templates"}
 _TAGS_WHEN_KEYS = {"when", "add"}
@@ -135,6 +136,7 @@ def load_project_config(path: Path) -> ProjectConfig:
         privacy=data.get("privacy", "private"),
         category_id=str(data.get("category_id", CATEGORY_FILM_ANIMATION)),
         cadence_seconds=parse_duration(data.get("cadence", 0)),
+        upload_order=parse_upload_order(data["upload_order"]) if "upload_order" in data else None,
         title=title,
         description=desc,
         tags=list(data.get("tags", [])),
@@ -163,6 +165,7 @@ class GlobalConfig:
     backends: list[BackendSpec]
     default_privacy: str = "private"
     settle_seconds: float = 5.0
+    upload_order: str = "first"
 
     @property
     def state_dir(self) -> Path:
@@ -193,6 +196,24 @@ def _default_projects_dir() -> Path:
     if repo_projects.is_dir():
         return repo_projects
     return DEFAULT_HOME / "projects"
+
+
+_UPLOAD_ORDER_ALIASES = {
+    "fifo": "first",
+    "oldest": "first",
+    "lifo": "last",
+    "newest": "last",
+}
+_UPLOAD_ORDER_VALUES = {"first", "last", "random"}
+
+
+def parse_upload_order(value: object) -> str:
+    """Parse the global bundle selection mode."""
+    order = str(value).strip().lower()
+    order = _UPLOAD_ORDER_ALIASES.get(order, order)
+    if order not in _UPLOAD_ORDER_VALUES:
+        raise ValueError(f"upload_order must be one of {sorted(_UPLOAD_ORDER_VALUES)}, got {value!r}")
+    return order
 
 
 def load_global_config(path: Path | None = None) -> GlobalConfig:
@@ -236,6 +257,7 @@ def load_global_config(path: Path | None = None) -> GlobalConfig:
         backends=backends,
         default_privacy=str(data.get("privacy", "private")),
         settle_seconds=float(data.get("settle_seconds", 5.0)),
+        upload_order=parse_upload_order(data.get("upload_order", "first")),
     )
 
 

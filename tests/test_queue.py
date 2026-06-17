@@ -69,21 +69,21 @@ def test_local_queue_recursive(tf, tmp_path):
     inbox = tmp_path / "inbox"
     q = LocalQueue(inbox, settle_seconds=0)
     # A bundle nested several levels deep must be found.
-    _write_bundle(inbox, "by-project/tiki/2026/run-001")
+    _write_bundle(inbox, "by-project/line/2026/run-001")
     # A non-bundle organizational dir (no sidecar) in between is fine.
     (inbox / "by-project" / "empty-so-far").mkdir(parents=True, exist_ok=True)
 
     refs = q.list_ready()
     ids = {r.bundle_id for r in refs}
     tf.log(f"listed ids: {ids}")
-    tf.expect(ids == {"by-project/tiki/2026/run-001"}, f"nested bundle found with relative id (got {ids})")
+    tf.expect(ids == {"by-project/line/2026/run-001"}, f"nested bundle found with relative id (got {ids})")
 
     ref = refs[0]
     local = q.fetch(ref, tmp_path / "scratch")
     tf.expect(local.video_path.exists(), "fetch resolves the nested video")
 
     q.remove(ref)
-    tf.expect(not (inbox / "by-project" / "tiki").exists(), "remove prunes now-empty parent dirs")
+    tf.expect(not (inbox / "by-project" / "line").exists(), "remove prunes now-empty parent dirs")
     tf.expect(inbox.exists(), "but never removes the inbox itself")
     tf.expect((inbox / "by-project" / "empty-so-far").exists(), "unrelated empty dir left untouched")
 

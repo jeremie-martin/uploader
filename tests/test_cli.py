@@ -55,7 +55,7 @@ def test_stage(tf, tmp_path, monkeypatch):
 
     result = CliRunner().invoke(
         cli,
-        ["--config", str(cfg), "stage", str(video), "--project", "demo", "-V", "seed=36", "-M", "spec=tiki", "--privacy", "private"],
+        ["--config", str(cfg), "stage", str(video), "--project", "demo", "-V", "seed=36", "-M", "spec=line", "--privacy", "private"],
     )
     tf.expect(result.exit_code == 0, f"stage exits 0 (output: {result.output})")
 
@@ -68,7 +68,7 @@ def test_stage(tf, tmp_path, monkeypatch):
     tf.log(f"sidecar: {sidecar}")
     tf.expect(sidecar["project"] == "demo", "project set")
     tf.expect(sidecar["values"] == {"seed": 36}, "value coerced to int and stored")
-    tf.expect(sidecar["meta"] == {"spec": "tiki"}, "meta stored separately")
+    tf.expect(sidecar["meta"] == {"spec": "line"}, "meta stored separately")
     tf.expect(sidecar["overrides"]["privacy"] == "private", "privacy override stored")
     tf.expect("created_at" in sidecar, "created_at sentinel present")
 

@@ -11,6 +11,10 @@ side. This is the deliberate line that the older per-project uploaders
 
 ## The contract (what a project produces)
 
+See [PROJECT_UPLOAD_CONTRACT.md](PROJECT_UPLOAD_CONTRACT.md) for the full integration
+guide for generator projects: bundle naming, directory/object-store layout,
+`upload.json` schema, project metadata config, staging rules, and validation commands.
+
 A **bundle** = a finished video + an `upload.json` sidecar, in a directory (local
 backend) or under an object-store prefix (cloud backend). Write/upload the sidecar
 **last** - it's the "ready" sentinel.
@@ -31,7 +35,7 @@ is omitted, the lone video file in the bundle is used.
 
 The inbox is scanned **recursively**: a bundle is any directory holding an `upload.json`,
 at any depth, so you can organize the inbox into whatever sub-folders you like
-(`inbox/tiki/2026/run-001/...`). It stays strictly one video + one sidecar per bundle; the
+(`inbox/line/2026/run-001/...`). It stays strictly one video + one sidecar per bundle; the
 scan never descends into a bundle, skips dot-prefixed staging dirs, and prunes empty
 parent folders after a bundle is removed.
 
@@ -44,6 +48,7 @@ each project owns its *content*:
 playlist = "PL..."
 privacy  = "public"
 cadence  = "2h"            # this project uploads at most once every 2h
+upload_order = "random"    # optional: first, last, or random
 
 [title]
 templates     = ["{count|human} double pendulums, one tiny difference", "Chaos Theory Visualized"]

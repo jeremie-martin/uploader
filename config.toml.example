@@ -17,6 +17,11 @@ projects_dir = "~/prog/uploader/projects"
 # against picking up a half-rsynced / half-uploaded bundle).
 settle_seconds = 5
 
+# Default for choosing among bundles whose project cadence is currently due:
+# "first" = oldest ready bundle (default), "last" = newest, "random" = random due bundle.
+# Individual projects can override this with upload_order in projects/<name>.toml.
+upload_order = "first"
+
 # ---------------------------------------------------------------------------
 # Queue backends - drained together. List as many as you like.
 # ---------------------------------------------------------------------------

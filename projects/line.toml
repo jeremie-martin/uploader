@@ -1,11 +1,12 @@
-# tiki - procedurally generated Line Rider tracks synced to music.
+# line - procedurally generated Line Rider tracks synced to music.
 # Each video is one seed of a shared musical spec (speed / airtime / beat-landings).
 # Per-video `values`: { "seed": <int>, "rep": <int> }. Starter pool - edit freely.
 
 playlist = "PLJiY6b-MSe_8"
 privacy = "public"
 category_id = "20"      # Gaming (Line Rider). Use "1" for Film & Animation.
-cadence = "2h"          # at most one tiki upload every 2 hours
+cadence = "1h"          # at most one line upload every hour
+upload_order = "random" # pick a random ready Line bundle whenever Line is due
 
 tags = [
     "line rider", "linerider", "procedural generation", "generative",

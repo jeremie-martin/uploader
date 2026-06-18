@@ -1,35 +1,130 @@
-# line - procedurally generated Line Rider tracks synced to music.
-# Each video is one seed of a shared musical spec (speed / airtime / beat-landings).
-# Per-video `values`: { "seed": <int>, "rep": <int> }. Starter pool - edit freely.
+# line - Line Rider tracks set to music.
+# Viral-first copy: no insider language (no seeds, no "procedural", no "on beat"). Just the
+# felt experience - satisfying, sound-on, wait-for-it. Templates reference no per-video
+# values, so line bundles need no `values` in upload.json.
 
 playlist = "PLJiY6b-MSe_8"
 privacy = "public"
-category_id = "20"      # Gaming (Line Rider). Use "1" for Film & Animation.
+category_id = "20"      # Gaming (Line Rider). Use "24" (Entertainment) to chase a broader feed.
 cadence = "1h"          # at most one line upload every hour
 upload_order = "random" # pick a random ready Line bundle whenever Line is due
 
 tags = [
-    "line rider", "linerider", "procedural generation", "generative",
-    "music sync", "synced to the beat", "satisfying", "oddly satisfying",
-    "automation", "track generation",
+    "satisfying", "oddly satisfying", "satisfying video", "satisfying to watch",
+    "asmr", "relaxing", "hypnotic", "line rider", "sound on", "watch on loop",
+    "on repeat", "smooth", "must watch", "satisfying shorts",
 ]
 
 [title]
 templates = [
-    "Line Rider synced to music",
-    "Line Rider synced to the beat",
-    "Line Rider music",
-    "cool Line Rider track",
-    "satisfying Line Rider",
-    "procedural Line Rider",
-    "Line Rider on beat",
+    # Satisfying core
+    "So Satisfying",
+    "Oddly Satisfying",
+    "This Is So Satisfying",
+    "Satisfying Line Rider",
+    "The Most Satisfying Line Rider You'll See Today",
+    "Line Rider But Satisfying",
+    # Sound / music, in plain language
+    "Turn The Sound On",
+    "Sound On",
+    "Perfectly Synced To The Music",
+    "Every Move Hits The Music",
+    "It Lines Up Perfectly",
+    "This Just Hits Different",
+    "This Line Rider Hits Different",
+    # Wait-for-it / curiosity hooks
+    "Wait For The Drop",
+    "Wait For It",
+    "Watch Until The End",
+    "It Keeps Getting Better",
+    "You Won't Look Away",
+    "Keep Watching",
+    # Loop / replay bait
+    "I Can't Stop Watching This Line Rider",
+    "Line Rider On Loop",
+    "Watch This On Loop",
+    "Try Not To Watch This Twice",
+    # Smoothness / flow
+    "So Smooth",
+    "Buttery Smooth",
+    "How Is This So Smooth",
+    "The Smoothest Line Rider Run",
+    "Pure Flow",
+    # Calm / hypnotic
+    "Strangely Relaxing",
+    "This Is Weirdly Calming",
+    "Hypnotic",
 ]
-hashtags = ["linerider", "procedural", "satisfying", "generative", "music"]
-hashtag_count = [0, 2]
+hashtags = ["satisfying", "oddlysatisfying", "linerider", "asmr", "soundon", "shorts"]
+hashtag_count = [1, 2]
 
 [description]
 templates = [
-    "Procedurally generated Line Rider, synced to the music. Speed, airtime, and landings all placed to hit the beat.",
-    "A Line Rider track generated from a musical spec. Same song, new seed, a completely different ride.",
-    "Auto-generated Line Rider track synced to the song. Seed {seed}.",
+    """\
+Turn the sound on.
+
+#satisfying #oddlysatisfying #linerider""",
+
+    """\
+Wait for the drop.
+
+#satisfying #linerider #shorts""",
+
+    """\
+So satisfying to watch on loop.
+
+#oddlysatisfying #satisfying #asmr""",
+
+    """\
+I can't stop watching this.
+
+#satisfying #linerider #shorts""",
+
+    """\
+It all lines up perfectly with the music.
+
+#satisfying #oddlysatisfying #linerider""",
+
+    """\
+Sound on. Trust me.
+
+#satisfying #asmr #linerider""",
+
+    """\
+Just watch.
+
+#satisfying #hypnotic #oddlysatisfying""",
+
+    """\
+Pure Line Rider flow, start to finish.
+
+#satisfying #linerider #shorts""",
+
+    """\
+Weirdly calming. Watch the whole thing.
+
+#satisfying #asmr #relaxing""",
+
+    """\
+Wait until the end.
+
+#satisfying #oddlysatisfying #linerider""",
+
+    """\
+#satisfying #oddlysatisfying #linerider #asmr #shorts""",
+
+    """\
+This one hits different with the sound on.
+
+#satisfying #linerider #shorts""",
+
+    """\
+The most satisfying Line Rider on your feed today.
+
+#oddlysatisfying #satisfying #shorts""",
+
+    """\
+The smoothest Line Rider, start to finish.
+
+#satisfying #linerider #asmr""",
 ]

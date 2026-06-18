@@ -6,7 +6,7 @@
 playlist = "PLJiY6b-MSe_8"
 privacy = "public"
 category_id = "20"      # Gaming (Line Rider). Use "24" (Entertainment) to chase a broader feed.
-cadence = "1h"          # at most one line upload every hour
+cadence = "2h"          # at most one line upload every 2 hours
 upload_order = "random" # pick a random ready Line bundle whenever Line is due
 
 tags = [

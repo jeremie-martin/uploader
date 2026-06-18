@@ -1,44 +1,188 @@
 # double-pendulum - chaos physics simulations.
-# Seeded from double-pendulum/src/pendulum_tools/templates.py. Per-video `values`
-# expected in the sidecar: { "count": <int pendulums>, "boom_time": "<e.g. 12s>" }.
+# Faithful port of double-pendulum/src/pendulum_tools/templates.py (TITLE_TEMPLATES,
+# TITLE_HASHTAGS, DESCRIPTION_TEMPLATES, BASE_TAGS, get_count_tags). The original
+# `{count_formatted}` token maps to `{count|human}` (the human filter renders 1000000 ->
+# "1 Million", 100000 -> "100K", matching format_count()).
+#
+# Per-video `values` expected in the sidecar:
+#   { "count": <int pendulums>, "boom_time": "<video-time, e.g. 15s, or N/A>" }
+# Two descriptions reference {boom_time}, so the producer must always supply it.
 
-playlist = ""          # set your PL... id
+playlist = "PL2G6-wO4Mi98AEbZbFtVVqreHULeMr_ak"
 privacy = "public"
+category_id = "10"     # Music, matching the original uploader (CATEGORY_MUSIC)
 cadence = "2h"         # at most one double-pendulum upload every 2 hours
 
-# Always-on tags (replaces double-pendulum's BASE_TAGS). Top-level keys must precede
-# any [table] header in TOML, so `tags` lives here, before [title].
+# BASE_TAGS - always included. Top-level keys must precede any [table] header in TOML,
+# so `tags` lives here, before [title].
 tags = [
     "double pendulum", "chaos theory", "physics simulation", "butterfly effect",
     "satisfying video", "mesmerizing", "hypnotic", "physics", "simulation",
     "chaos", "pendulum", "science", "math", "visualization", "oddly satisfying",
+    "relaxing",
 ]
 
 [title]
+# TITLE_TEMPLATES - all 39, in original order.
 templates = [
-    "{count|human} double pendulums, one tiny difference",
+    # Chaos-focused
     "Chaos Theory Visualized",
-    "{count|human} Simulations, One Tiny Difference",
-    "The Butterfly Effect",
     "From Order to Chaos",
+    "The Moment Chaos Begins",
+    "When Order Breaks Down",
+    "Pure Chaos",
+    "Controlled Chaos",
+    "Chaos Unfolds",
+    "Beautiful Chaos",
+    "Chaos in Motion",
+    # Butterfly effect themed
+    "The Butterfly Effect",
+    "The Butterfly Effect Visualized",
+    "Tiny Change, Massive Chaos",
+    "Small Differences, Big Chaos",
+    "One Tiny Difference",
+    "0.00001° Makes All The Difference",
+    # Satisfying/hypnotic
+    "Oddly Satisfying Chaos",
+    "Hypnotic",
+    "Mesmerizing Physics",
+    "Strangely Satisfying",
+    "So Satisfying",
+    # Count-focused
+    "{count|human} Simulations, One Tiny Difference",
+    "{count|human} Identical Starts, Total Chaos",
+    "{count|human} Start Together, Then This Happens",
+    "{count|human} Pendulums, One Outcome",
+    "{count|human} Paths Diverge",
+    # Curiosity-driven
+    "Watch Until The End",
+    "You Won't See It Coming",
+    "This Is Why Prediction Is Impossible",
+    "They All Start The Same",
     "Same Start, Different End",
+    "Wait For It",
+    "Keep Watching",
+    # Physics/science
+    "Physics Is Beautiful",
+    "Nature Is Chaotic",
+    "Why We Can't Predict The Future",
+    "Deterministic Chaos",
+    # Clean/minimal
+    "Chaos",
+    "Order to Chaos",
+    "Divergence",
 ]
-hashtags = ["chaos", "physics", "satisfying", "simulation", "butterflyeffect"]
+# TITLE_HASHTAGS - 10 (without leading '#', the engine adds it). 0-3 sampled per title.
+hashtags = [
+    "chaos", "physics", "satisfying", "simulation", "science",
+    "hypnotic", "mesmerizing", "butterflyeffect", "math", "pendulum",
+]
 hashtag_count = [0, 3]
 
 [description]
+# DESCRIPTION_TEMPLATES - all 15, verbatim (embedded hashtag lines preserved).
 templates = [
-    "{count|human} identical starts. Complete chaos.",
-    "They all start the same way. They don't end the same way.",
-    "Deterministic chaos: the outcome is predetermined, but impossible to predict.",
-    "{count|human} pendulums, one tiny difference in starting angle. Watch for {boom_time}.",
+    """\
+{count|human} identical starts. Complete chaos.
+
+#chaos #physics #satisfying #butterflyeffect""",
+
+    """\
+The butterfly effect: tiny differences create massive outcomes.
+
+{count|human} simulations prove it.
+
+#butterflyeffect #chaos #physics #satisfying""",
+
+    """\
+{count|human} pendulums. One tiny difference.
+
+Watch for {boom_time}.
+
+#chaos #physics #satisfying #simulation""",
+
+    """\
+They all start the same way.
+
+They don't end the same way.
+
+#chaos #physics #satisfying #butterflyeffect""",
+
+    """\
+Order becomes chaos at {boom_time}.
+
+{count|human} simulations.
+
+#chaos #physics #satisfying #simulation""",
+
+    """\
+{count|human} pendulums. Tiny differences. Total chaos.
+
+#chaos #physics #satisfying #butterflyeffect""",
+
+    """\
+Same start. Different end.
+
+#chaos #physics #satisfying #simulation""",
+
+    """\
+What happens when {count|human} start almost identical?
+
+Chaos.
+
+#chaos #physics #satisfying #butterflyeffect""",
+
+    """\
+#chaos #physics #simulation #satisfying #pendulum""",
+
+    """\
+Deterministic chaos: the outcome is predetermined, but impossible to predict.
+
+{count|human} pendulums demonstrate why.
+
+#chaostheory #physics #science #simulation""",
+
+    """\
+Where physics meets art.
+
+#physics #simulation #chaos #satisfying""",
+
+    """\
+{count|human} begin together. None finish together.
+
+#chaos #butterflyeffect #physics #simulation""",
+
+    """\
+0.00001° difference. Completely different outcomes.
+
+#chaos #math #physics #simulation""",
+
+    """\
+Just watch.
+
+#satisfying #hypnotic #chaos #physics""",
+
+    """\
+Double pendulum chaos.
+
+{count|human} simulations.
+
+#pendulum #chaos #physics #simulation""",
 ]
 
-# Value-conditioned tags (replaces get_count_tags).
+# get_count_tags() - 4 tiers, expressed as mutually exclusive ranges so only one fires.
 [[tags_when]]
 when = "count >= 1000000"
 add = ["million pendulums", "1 million", "massive simulation"]
 
 [[tags_when]]
-when = "count >= 100000 and count < 1000000"
+when = "count >= 500000 and count < 1000000"
+add = ["500k pendulums", "half million"]
+
+[[tags_when]]
+when = "count >= 100000 and count < 500000"
 add = ["100k pendulums", "hundred thousand"]
+
+[[tags_when]]
+when = "count >= 10000 and count < 100000"
+add = ["10k pendulums", "ten thousand"]

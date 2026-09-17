@@ -2,7 +2,9 @@
 """Backfill bridge: stage existing double-pendulum renders as uploader bundles.
 
 PROJECT ADAPTER (one-time use). This is deliberately *not* part of the uploader core - the
-core stays project-agnostic. This script encodes double-pendulum's ``metadata.json`` schema
+core stays project-agnostic. Since September 2026 double-pendulum writes bundles directly
+(its `pendulum run` pipeline); this script only remains to drain the legacy `watch2`
+directory on the Pi once, after which it should be deleted. This script encodes double-pendulum's ``metadata.json`` schema
 so its already-rendered videos become generic bundles in the uploader inbox, after which the
 normal scheduler drains them at the project's cadence.
 

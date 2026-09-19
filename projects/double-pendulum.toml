@@ -11,7 +11,7 @@
 playlist = "PL2G6-wO4Mi98AEbZbFtVVqreHULeMr_ak"
 privacy = "public"
 category_id = "10"     # Music, matching the original uploader (CATEGORY_MUSIC)
-cadence = "2h"         # at most one double-pendulum upload every 2 hours
+cadence = "30m"        # at most one double-pendulum upload every 30 minutes
 
 # BASE_TAGS - always included. Top-level keys must precede any [table] header in TOML,
 # so `tags` lives here, before [title].

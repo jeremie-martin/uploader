@@ -6,7 +6,8 @@ lives locally under ``$UPLOADER_HOME`` throughout - only the videos relocate.
 
 Files (all under ``home``):
 
-* ``state.json``    - ``{"projects": {"<name>": "<last_upload_iso>"}}`` (cadence clock)
+* ``state.json``    - ``{"projects": {"<name>": "<last_upload_iso>"},
+  "rate_limited_until": {"<name>": "<iso>"}}`` (cadence clock + throttle backoff)
 * ``uploads.jsonl`` - append-only ledger; source of truth, used for dedup by youtube id
 * ``failed.jsonl``  - append-only terminal failures, for post-mortem
 """
@@ -71,7 +72,29 @@ class State:
     def touch_project(self, project: str, ts: float | None = None) -> None:
         st = self._state()
         st.setdefault("projects", {})[project] = now_iso(datetime.fromtimestamp(ts, UTC) if ts else None)
+        st.get("rate_limited_until", {}).pop(project, None)  # a success clears any backoff
         atomic_write_json(self.state_path, st)
+
+    # --- throttle backoff ------------------------------------------------
+    def seconds_until_unthrottled(self, project: str, *, now: float | None = None) -> float:
+        """How long this project must wait after a YouTube throttle (0 if free to go).
+
+        Distinct from the cadence clock: cadence paces a *healthy* project, this parks a
+        project YouTube is actively refusing, so ticks stop re-offering a video that
+        cannot be accepted yet.
+        """
+        until = _parse_iso(self._state().get("rate_limited_until", {}).get(project))
+        if until is None:
+            return 0.0
+        return max(0.0, until - (now if now is not None else time.time()))
+
+    def set_rate_limited(self, project: str, cooldown_seconds: float, *, now: float | None = None) -> float:
+        """Park ``project`` for ``cooldown_seconds``. Returns the epoch it resumes at."""
+        until = (now if now is not None else time.time()) + max(0.0, cooldown_seconds)
+        st = self._state()
+        st.setdefault("rate_limited_until", {})[project] = now_iso(datetime.fromtimestamp(until, UTC))
+        atomic_write_json(self.state_path, st)
+        return until
 
     # --- ledger / dedup --------------------------------------------------
     def ledger_has_youtube_id(self, youtube_id: str) -> bool:

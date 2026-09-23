@@ -334,3 +334,60 @@ def test_invalid_sidecar_meta_fails_before_upload(tf, tmp_path, monkeypatch):
     tf.expect(len(rec.calls) == 0, "invalid meta is rejected before upload")
     tf.expect((inbox / "alpha-bad-meta" / "failed").exists(), "bundle is marked failed for inspection")
     tf.expect(State(tmp_path / "home").uploads() == [], "no upload ledger entry is written")
+
+
+@recorded_test("tick_rate_limit_keeps_bundle_and_backs_off")
+def test_rate_limit_parks_project(tf, tmp_path, monkeypatch):
+    """A YouTube throttle must keep the bundle and park the project.
+
+    Regression for the Sep 2026 incident: a throttle was classified terminal, and
+    because cadence only advances on success every later tick burned another bundle.
+    """
+    cfg = _setup(tmp_path, {"alpha": "1s"}, monkeypatch)
+    _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    for i in range(3):
+        _make_bundle(inbox, f"alpha-{i:03d}", "alpha", created_at=f"2026-06-16T10:0{i}:00Z")
+
+    def _throttled(**_kwargs):
+        raise youtube.RateLimitError("uploadLimitExceeded")
+
+    monkeypatch.setattr(youtube, "upload", _throttled)
+
+    code = tick.run_tick(cfg)
+    tf.expect(code == tick.EXIT_RATE_LIMIT, f"first tick reports rate limit (got {code})")
+
+    tf.log("Nothing may be marked failed or removed by a throttle")
+    for i in range(3):
+        d = inbox / f"alpha-{i:03d}"
+        tf.expect(d.is_dir(), f"bundle alpha-{i:03d} still present")
+        tf.expect(not (d / "failed").exists(), f"bundle alpha-{i:03d} not marked failed")
+
+    state = State(tmp_path / "home")
+    left = state.seconds_until_unthrottled("alpha")
+    tf.expect(left > 0, f"project parked after throttle (got {left}s)")
+    tf.expect(left <= 3600, f"cooldown capped at the 1h default (got {left}s)")
+
+    tf.log("While parked, a later tick must not offer another video")
+    code = tick.run_tick(cfg)
+    tf.expect(code == tick.EXIT_OK, f"parked tick is a no-op (got {code})")
+    tf.expect(len(list(inbox.iterdir())) == 3, "all three bundles still queued")
+    tf.expect(state.uploads() == [], "nothing entered the ledger")
+
+
+@recorded_test("tick_rate_limit_cooldown_expiry_and_clear")
+def test_cooldown_expires_then_success_clears_it(tf, tmp_path, monkeypatch):
+    """Once the cooldown lapses the project uploads again, and success clears the park."""
+    cfg = _setup(tmp_path, {"alpha": "1s"}, monkeypatch)
+    rec = _patch_youtube(monkeypatch)
+    inbox = tmp_path / "inbox"
+    _make_bundle(inbox, "alpha-001", "alpha", created_at="2026-06-16T10:00:00Z")
+
+    state = State(tmp_path / "home")
+    state.set_rate_limited("alpha", -1.0)  # already elapsed
+    tf.expect(state.seconds_until_unthrottled("alpha") == 0, "an elapsed cooldown does not block")
+
+    code = tick.run_tick(cfg)
+    tf.expect(code == tick.EXIT_OK, f"tick uploads once the cooldown lapsed (got {code})")
+    tf.expect(len(rec.calls) == 1, f"exactly one upload (got {len(rec.calls)})")
+    tf.expect(state.seconds_until_unthrottled("alpha") == 0, "a successful upload clears the park")

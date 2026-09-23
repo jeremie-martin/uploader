@@ -145,6 +145,23 @@ makes it survive reboots / logouts - without it, user timers only run while you'
 logged in. Check it's alive with `systemctl --user list-timers uploader.timer` and
 `uploader status`.
 
+## Rate limits
+
+YouTube caps how many videos a channel may upload per rolling 24 h, and the cap is
+dynamic: it can drop after a channel goes quiet and recovers with steady uploading. When
+it is hit, the API answers **HTTP 400 `uploadLimitExceeded`** (not 403/429), so throttling
+is detected by the machine-readable `reason`, never by status code.
+
+A throttled bundle is always **kept**, never marked `failed`, and the project is parked
+for `rate_limit_cooldown` (default `1h`, or YouTube's `Retry-After` when it sends one) so
+later ticks stop re-offering a video the channel will refuse. A successful upload clears
+the park. `uploader status` shows the queue; a parked project is logged each tick as
+`... is rate-limited by YouTube; retrying in N min`.
+
+Setting a cadence faster than the channel's cap is therefore safe - the uploader
+self-throttles and picks up extra slots as they free - it just will not raise throughput
+beyond what YouTube allows.
+
 ## Crash safety
 
 Per upload, the commit order is: write `uploaded` marker (fsync) → append ledger (dedup

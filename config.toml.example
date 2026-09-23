@@ -17,6 +17,12 @@ projects_dir = "~/prog/uploader/projects"
 # against picking up a half-rsynced / half-uploaded bundle).
 settle_seconds = 5
 
+# How long to park a project after YouTube throttles it (uploadLimitExceeded /
+# quotaExceeded / 429). Cadence paces a healthy project; this stops every tick
+# re-offering a video the channel cannot accept yet. A successful upload clears it, and
+# a Retry-After header from YouTube wins over this value. Default "1h".
+rate_limit_cooldown = "1h"
+
 # Default for choosing among bundles whose project cadence is currently due:
 # "first" = oldest ready bundle (default), "last" = newest, "random" = random due bundle.
 # Individual projects can override this with upload_order in projects/<name>.toml.

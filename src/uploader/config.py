@@ -166,6 +166,9 @@ class GlobalConfig:
     default_privacy: str = "private"
     settle_seconds: float = 5.0
     upload_order: str = "first"
+    # How long to park a project after YouTube throttles it. Cadence paces a healthy
+    # project; this stops ticks re-offering a video the channel cannot accept yet.
+    rate_limit_cooldown_seconds: int = 3600
 
     @property
     def state_dir(self) -> Path:
@@ -232,8 +235,7 @@ def load_global_config(path: Path | None = None) -> GlobalConfig:
             home = Path(os.path.expanduser(str(data["home"])))
 
     credentials_dir = Path(
-        os.environ.get("UPLOADER_CREDENTIALS_DIR")
-        or os.path.expanduser(str(data.get("credentials_dir", home / "credentials")))
+        os.environ.get("UPLOADER_CREDENTIALS_DIR") or os.path.expanduser(str(data.get("credentials_dir", home / "credentials")))
     )
     projects_dir = _default_projects_dir()
     if "projects_dir" in data and not os.environ.get("UPLOADER_PROJECTS_DIR"):
@@ -258,6 +260,7 @@ def load_global_config(path: Path | None = None) -> GlobalConfig:
         default_privacy=str(data.get("privacy", "private")),
         settle_seconds=float(data.get("settle_seconds", 5.0)),
         upload_order=parse_upload_order(data.get("upload_order", "first")),
+        rate_limit_cooldown_seconds=parse_duration(data.get("rate_limit_cooldown", "1h")),
     )
 
 

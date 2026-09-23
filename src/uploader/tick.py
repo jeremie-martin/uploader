@@ -31,6 +31,7 @@ import time
 import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
@@ -132,15 +133,23 @@ def _choose_by_order(refs: list[BundleRef], order: str) -> BundleRef:
 def _select_due(fresh: list[BundleRef], cfg: GlobalConfig, state: State, now: float) -> BundleRef | None:
     """Pick one bundle whose project is due per its cadence."""
     due: list[tuple[BundleRef, str | None]] = []
+    skipped_throttled: dict[str, float] = {}
     for ref in fresh:
         try:
             pc = cfg.load_project(ref.project)
         except FileNotFoundError:
             logger.warning("no project config for {!r}; leaving bundle {} in queue", ref.project, ref.bundle_id)
             continue
-        if state.seconds_until_due(ref.project, pc.cadence_seconds, now=now) <= 0:
-            due.append((ref, pc.upload_order))
+        if state.seconds_until_due(ref.project, pc.cadence_seconds, now=now) > 0:
+            continue
+        throttled = state.seconds_until_unthrottled(ref.project, now=now)
+        if throttled > 0:
+            skipped_throttled[ref.project] = throttled
+            continue
+        due.append((ref, pc.upload_order))
     if not due:
+        for project, secs in skipped_throttled.items():
+            logger.info("{} is rate-limited by YouTube; retrying in {:.0f} min", project, secs / 60)
         return None
 
     by_project: dict[str, list[BundleRef]] = {}
@@ -203,7 +212,11 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
 
     logger.info(
         "resolved {}: title={!r} tags={} privacy={} playlist={}",
-        ref.bundle_id, meta.title, meta.tags, meta.privacy, meta.playlist,
+        ref.bundle_id,
+        meta.title,
+        meta.tags,
+        meta.privacy,
+        meta.playlist,
     )
     if dry_run:
         logger.info("[dry-run] would upload {} ({})", ref.bundle_id, ref.backend.name)
@@ -236,7 +249,17 @@ def _process_one(ref: BundleRef, cfg: GlobalConfig, state: State, *, dry_run: bo
                 playlist_id=meta.playlist,
             )
         except youtube.RateLimitError as e:
-            logger.warning("RATE LIMIT: {} (keeping bundle {})", e, ref.bundle_id)
+            # Keep the bundle AND park the project: without the cooldown every tick would
+            # re-offer a video the channel is still refusing.
+            cooldown = e.retry_after or cfg.rate_limit_cooldown_seconds
+            until = state.set_rate_limited(ref.project, cooldown)
+            logger.warning(
+                "RATE LIMIT: {} (keeping bundle {}; pausing {} until {})",
+                e,
+                ref.bundle_id,
+                ref.project,
+                now_iso(datetime.fromtimestamp(until, UTC)),
+            )
             return EXIT_RATE_LIMIT
         except youtube.UploadError as e:
             return _mark_terminal(ref, state, f"upload: {e}", dry_run=dry_run)

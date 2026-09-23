@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import pickle
 
+import httplib2
 import pytest
+from googleapiclient.errors import HttpError
 
 from tests.framework import recorded_test
 from uploader import youtube
@@ -47,3 +50,46 @@ def test_refresh_failure_is_auth_error(tf, tmp_path):
     with pytest.raises(youtube.AuthError):
         youtube.load_or_refresh(tmp_path)
     tf.expect(True, "refresh failure is reported as AuthError")
+
+
+def _http_error(status: int, reason: str | None, message: str = "boom") -> HttpError:
+    """Build an HttpError shaped like a real googleapiclient one."""
+    errors = [] if reason is None else [{"message": message, "domain": "youtube.video", "reason": reason}]
+    content = json.dumps({"error": {"code": status, "message": message, "errors": errors}}).encode()
+    return HttpError(httplib2.Response({"status": status}), content)
+
+
+@recorded_test("rate_limit_upload_limit_exceeded")
+def test_upload_limit_exceeded_is_rate_limit(tf):
+    """The per-channel 24h upload cap arrives as HTTP 400 - it must NOT be terminal.
+
+    Regression: keying off the status code classified this as a terminal UploadError,
+    so every throttled tick permanently marked a good bundle `failed`.
+    """
+    e = _http_error(400, "uploadLimitExceeded", "The user has exceeded the number of videos they may upload.")
+    tf.expect(youtube._is_rate_limit(e), "400/uploadLimitExceeded must be treated as a rate limit")
+
+
+@recorded_test("rate_limit_classification")
+def test_rate_limit_classification(tf):
+    """Throttling reasons are retryable at any status; real errors stay terminal."""
+    for status, reason in [(403, "quotaExceeded"), (403, "rateLimitExceeded"), (400, "uploadLimitExceeded")]:
+        tf.expect(youtube._is_rate_limit(_http_error(status, reason)), f"{status}/{reason} should be a rate limit")
+
+    tf.expect(youtube._is_rate_limit(_http_error(429, None)), "429 is a rate limit even with no reason")
+
+    for status, reason in [(400, "invalidTitle"), (403, "forbidden"), (404, "videoNotFound")]:
+        tf.expect(not youtube._is_rate_limit(_http_error(status, reason)), f"{status}/{reason} must stay terminal")
+
+
+@recorded_test("rate_limit_malformed_body")
+def test_rate_limit_malformed_body(tf):
+    """A body that isn't the expected JSON shape must not raise - just not a rate limit."""
+    for content in [b"not json", b"null", b"[]", b'{"error": "a string"}', b"\xff\xfe"]:
+        e = HttpError(httplib2.Response({"status": 400}), content)
+        try:
+            got = youtube._is_rate_limit(e)
+        except Exception as exc:  # noqa: BLE001
+            tf.expect(False, f"_is_rate_limit raised on {content!r}: {exc}")
+            continue
+        tf.expect(got is False, f"{content!r} should not be a rate limit")

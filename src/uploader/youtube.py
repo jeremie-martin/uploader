@@ -39,6 +39,9 @@ RATE_LIMIT_REASONS = {
     "rateLimitExceeded",
     "userRateLimitExceeded",
     "dailyLimitExceeded",
+    # The per-channel "videos uploaded per 24h" cap. YouTube reports it as HTTP *400*,
+    # not 403/429 - so it must be matched on reason, never on status.
+    "uploadLimitExceeded",
 }
 CHUNKSIZE = 10 * 1024 * 1024  # 10 MiB resumable chunks
 
@@ -72,8 +75,7 @@ def run_oauth_flow(credentials_dir: Path) -> None:
     secrets = client_secrets_path(credentials_dir)
     if not secrets.exists():
         raise AuthError(
-            f"client_secrets.json missing at {secrets}\n"
-            "Download a Desktop OAuth client from Google Cloud Console and place it there."
+            f"client_secrets.json missing at {secrets}\nDownload a Desktop OAuth client from Google Cloud Console and place it there."
         )
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets), SCOPES)
     creds = flow.run_local_server(port=0)
@@ -126,16 +128,27 @@ def inspect_token(credentials_dir: Path) -> dict:
 
 
 def _is_rate_limit(e: HttpError) -> bool:
+    """True if YouTube is throttling us, so the bundle must be kept and retried.
+
+    The machine-readable ``reason`` is authoritative and is checked for *any* status:
+    YouTube spreads throttling across 429, 403 (quotaExceeded) and 400
+    (uploadLimitExceeded), so keying off the status code silently turns a temporary
+    throttle into a terminal failure that burns the bundle.
+    """
     if e.resp.status == 429:
         return True
-    if e.resp.status == 403:
-        try:
-            content = json.loads(e.content.decode("utf-8"))
-            for err in content.get("error", {}).get("errors", []):
-                if err.get("reason") in RATE_LIMIT_REASONS:
-                    return True
-        except (json.JSONDecodeError, KeyError, AttributeError):
-            pass
+    try:
+        content = json.loads(e.content.decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(content, dict):
+        return False
+    error = content.get("error")
+    if not isinstance(error, dict):
+        return False
+    for err in error.get("errors") or []:
+        if isinstance(err, dict) and err.get("reason") in RATE_LIMIT_REASONS:
+            return True
     return False
 
 
